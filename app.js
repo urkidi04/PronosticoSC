@@ -401,7 +401,7 @@ async function scImage(p){
     { k:"tar",  t:"Tarea",           w:310 }, { k:"pt", t:"Peso\ntarea", w:70, a:"c" },
     { k:"meta", t:"Meta",            w:112, a:"r" }, { k:"real", t:"Real", w:112, a:"r" },
     { k:"cum",  t:"Cumplimiento",    w:150 }, { k:"med", t:"Medible", w:220 },
-    { k:"pts",  t:"Aporte\n(pts)",   w:76, a:"c" }
+    { k:"pts",  t:"Aporte\n(pts)",   w:76, a:"c" }, { k:"val", t:"Suma peso\ntareas", w:104, a:"c" }
   ];
   const PAD = 32, RH = 32, HH = 46, TOP = 150, W = cols.reduce((a,c)=>a+c.w,0) + PAD*2;
   const GMIN = 52, gH = i => Math.max(Math.max(1,i.tareas.length)*RH, GMIN);
@@ -450,6 +450,11 @@ async function scImage(p){
     const cm = col("med"), ml = wrap(ind.medible||"—", cm.w-20, `400 12px ${F}`).slice(0, Math.max(1, Math.floor(gh/16)));
     ml.forEach((l,i)=>txt(l, cm.x+10, Y+gh/2+(i-(ml.length-1)/2)*16, { s:12, c:C.muted, max:cm.w-20 }));
     const cp = col("pts"); txt(nf.format(s.pts), cp.x+cp.w/2, Y+gh/2, { s:14, w:600, a:"center", m:true, c: sc.cap?st(s.s):C.muted });
+    // validación: los pesos de las tareas del indicador deben sumar 100
+    const cv2 = col("val"), suma = ind.tareas.reduce((a,t)=>a+Number(t.peso),0), ok = Math.abs(suma-100) <= 0.01;
+    rect(cv2.x+1, Y+1, cv2.w-2, gh-2, ok ? "#e3f3e8" : "#fbe3e0");
+    txt((ok ? "✓ " : "✗ ") + nf.format(suma), cv2.x+cv2.w/2, Y+gh/2 - (ok?0:8), { s:14, w:600, a:"center", m:true, c: ok ? C.good : C.bad });
+    if(!ok) txt(suma>100 ? `sobra ${nf.format(suma-100)}` : `falta ${nf.format(100-suma)}`, cv2.x+cv2.w/2, Y+gh/2+11, { s:11, a:"center", c:C.bad });
     // tareas
     ind.tareas.forEach((t, ti)=>{
       const ry = Y + off + ti*RH, cy = ry + RH/2, v = pctOf(t), pct = t.unidad === "%";
@@ -473,10 +478,14 @@ async function scImage(p){
   txt("Total", col("ind").x+14, Y+RH/2, { s:13, w:600, c:"#fff" });
   txt(nf.format(p.indicadores.reduce((a,i)=>a+Number(i.peso),0)), col("pi").x+col("pi").w/2, Y+RH/2, { s:14, w:600, a:"center", m:true, c:"#fff" });
   txt(nf.format(sc.total), col("pts").x+col("pts").w/2, Y+RH/2, { s:14, w:600, a:"center", m:true, c:"#fff" });
+  const okG = p.indicadores.filter(i=>Math.abs(i.tareas.reduce((a,t)=>a+Number(t.peso),0)-100)<=0.01).length;
+  const okAll = okG === p.indicadores.length && Math.abs(p.indicadores.reduce((a,i)=>a+Number(i.peso),0)-100) <= 0.01;
+  rect(col("val").x+1, Y+1, col("val").w-2, RH-2, okAll ? C.good : C.bad);
+  txt(`${okAll?"✓":"✗"} ${okG}/${p.indicadores.length}`, col("val").x+col("val").w/2, Y+RH/2, { s:13, w:600, a:"center", c:"#fff" });
   txt("Cumplimiento ponderado "+nf.format(sc.total)+"%", col("med").x+col("med").w-10, Y+RH/2, { s:12.5, w:600, a:"right", c:"#fff" });
   Y += RH;
   const hoy = new Date();
-  txt(`Cumplimiento por tarea = Real ÷ Meta (tope 100%). Aporte = peso del indicador × cumplimiento del indicador.`, PAD, Y+24, { s:11.5, c:C.muted });
+  txt(`Cumplimiento por tarea = Real ÷ Meta (tope 100%). Aporte = peso del indicador × cumplimiento del indicador. Suma peso tareas: debe dar 100 por indicador.`, PAD, Y+24, { s:11.5, c:C.muted });
   txt(`Generado ${hoy.getDate()} ${MESES[hoy.getMonth()]} ${hoy.getFullYear()} · Pronóstico SC`, W-PAD, Y+24, { s:11.5, c:C.muted, a:"right" });
   return cv;
 }
