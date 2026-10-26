@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pronóstico SC Q4 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f5f2; --panel:#ffffff; --ink:#1c1d1f; --muted:#6b6d72; --line:#e3e1dc;
+  --accent:#1f5fbf; --good:#1a7f4b; --warn:#b7791f; --bad:#c0392b; --track:#ecebe7;
+  --c1:#1f5fbf; --c2:#0f8b8d; --c3:#7a4fbf; --c4:#d0752a; --c5:#b03a6f;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141518; --panel:#1c1e22; --ink:#ececec; --muted:#9a9ca3; --line:#2c2f35;
+    --accent:#6ea2ff; --good:#4cc38a; --warn:#e2b04a; --bad:#ff7a6b; --track:#2a2d33;
+    --c1:#6ea2ff; --c2:#3fc1c3; --c3:#b18cf0; --c4:#f0a060; --c5:#e57aa8;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141518; --panel:#1c1e22; --ink:#ececec; --muted:#9a9ca3; --line:#2c2f35;
+  --accent:#6ea2ff; --good:#4cc38a; --warn:#e2b04a; --bad:#ff7a6b; --track:#2a2d33;
+  --c1:#6ea2ff; --c2:#3fc1c3; --c3:#b18cf0; --c4:#f0a060; --c5:#e57aa8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 16px 60px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:22px}
+h1{font-size:26px;margin:0;font-weight:600;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:14px;margin-top:4px}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 12px;border-radius:8px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:16px;margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 12px;font-weight:600}
+.score{display:flex;align-items:center;gap:18px}
+.ring{width:132px;height:132px;flex:none}
+.big{font-size:40px;font-weight:600;line-height:1}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.kpi{border-top:1px solid var(--line);padding-top:8px}
+.kpi b{display:block;font-size:20px}
+.kpi span{font-size:12px;color:var(--muted)}
+.wbar{display:flex;height:34px;border-radius:8px;overflow:hidden;margin-bottom:12px}
+.wbar div{display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;min-width:0;white-space:nowrap;overflow:hidden}
+.legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 14px;font-size:13px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle}
+.ind{margin-bottom:16px}
+.ind-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.ind-title{display:flex;align-items:center;gap:10px}
+.ind-title .dot{width:12px;height:12px;border-radius:4px;flex:none}
+.ind-title h3{margin:0;font-size:17px;font-weight:600}
+.tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+.ind-score{text-align:right}
+.ind-score b{font-size:20px}
+.ind-score span{display:block;font-size:12px;color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+th{font-size:12px;font-weight:500;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+td.num,th.num{text-align:right}
+.prog{height:8px;background:var(--track);border-radius:4px;overflow:hidden;min-width:80px}
+.prog div{height:100%;border-radius:4px;transition:width .2s}
+input[type=number]{width:110px;font:inherit;font-family:"IBM Plex Mono",monospace;font-size:13px;text-align:right;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+input[type=number]:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.unit{font-size:12px;color:var(--muted);margin-left:4px}
+.note{font-size:13px;color:var(--muted);margin-top:24px}
+.st{font-size:12px;font-weight:600}
+@media (max-width:760px){
+  .grid{grid-template-columns:1fr}
+  .hide-sm{display:none}
+  input[type=number]{width:84px}
+  td,th{padding:7px 4px}
+}
+.who{font-size:13px;color:var(--muted);align-self:center}
+.live{color:var(--good)}
+.setup{background:var(--panel);border:1px solid var(--warn);border-radius:10px;padding:12px 14px;font-size:14px}
+.login{max-width:440px;margin:40px auto 0}
+.login p{margin:0 0 14px;color:var(--muted)}
+.login form{display:flex;flex-direction:column;gap:10px}
+.login label{font-size:13px;font-weight:500}
+.login input{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;padding:9px 12px}
+button:disabled{opacity:.6;cursor:default}
+.hint{font-size:13px;color:var(--muted)}
+.hint.err{color:var(--bad)} .hint.ok{color:var(--good)}
+.by{font-size:11px;color:var(--muted);margin-top:2px}
+input.saving{opacity:.5}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;opacity:0;pointer-events:none;transition:.2s}
+.toast.show{opacity:1;transform:translateX(-50%)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Scorecard Q4 2026 · Pronóstico</h1>
+      <div class="sub">Oficina Aplicaciones SAP/POS · Periodo 1-oct-2026 a 31-dic-2026</div>
+    </div>
+    <div class="tools">
+      <span class="who" id="who" hidden><span id="whoEmail"></span> <span class="live" id="status"></span></span>
+      <button id="btnOut" hidden>Cerrar sesión</button>
+      <button id="theme" aria-label="Cambiar tema">◐ Tema</button>
+    </div>
+  </header>
+
+  <p class="setup" id="setup" hidden>Falta configurar la base: llena <code>config.js</code> con los datos de Supabase y ejecuta <code>supabase/schema.sql</code>.</p>
+
+  <section class="card login" id="login" hidden aria-labelledby="h-login">
+    <h2 id="h-login">Iniciar sesión</h2>
+    <p>Acceso restringido a correos <b>@bafar.com.mx</b>. Te enviaremos un enlace a tu correo para entrar.</p>
+    <form id="loginForm" novalidate>
+      <label for="loginEmail">Correo</label>
+      <input id="loginEmail" type="email" autocomplete="email" placeholder="nombre@bafar.com.mx" required>
+      <button type="submit" class="primary" id="btnLogin">Enviarme el enlace</button>
+      <span class="hint" id="loginMsg" role="status"></span>
+    </form>
+  </section>
+
+  <main id="app" hidden>
+  <div class="grid">
+    <section class="card">
+      <h2>Cumplimiento ponderado</h2>
+      <div class="score">
+        <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="var(--track)" stroke-width="12"/>
+          <circle id="ringArc" cx="60" cy="60" r="50" fill="none" stroke="var(--accent)" stroke-width="12"
+            stroke-linecap="round" stroke-dasharray="0 314.16" transform="rotate(-90 60 60)"/>
+        </svg>
+        <div>
+          <div class="big" id="total" style="font-variant-numeric:tabular-nums">—</div>
+          <div class="sub" id="totalNote">Cargando…</div>
+        </div>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><b class="mono" id="nInd">—</b><span>Indicadores</span></div>
+        <div class="kpi"><b class="mono" id="nTask">—</b><span>Tareas</span></div>
+        <div class="kpi"><b class="mono" id="captured">—</b><span>Con real capturado</span></div>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Peso por indicador (suma 100)</h2>
+      <div class="wbar" id="wbar"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+  </div>
+
+  <div id="inds"></div>
+
+  <p class="note">
+    Cálculo: cumplimiento de cada tarea = Real ÷ Meta (tope 100%). Cumplimiento del indicador = Σ(peso tarea × cumplimiento).
+    Total = Σ(peso indicador × cumplimiento del indicador). El valor real se guarda en la base compartida al salir del campo
+    y se ve en vivo para todo el equipo; se registra quién lo capturó. Fuente: SC_Base_Q4_2026_JCU.xlsx.
+  </p>
+  </main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+(function(){
+const $ = id => document.getElementById(id);
+const CFG = window.APP_CONFIG || {};
+const DOMAIN = (CFG.ALLOWED_DOMAIN || "").toLowerCase();
+const KEY = "pronosticoSC_q4_2026";
+const nf = new Intl.NumberFormat("es-MX",{maximumFractionDigits:1});
+const nf0 = new Intl.NumberFormat("es-MX");
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const statusColor = p => p>=95 ? "var(--good)" : p>=80 ? "var(--warn)" : "var(--bad)";
+const COLORS = ["--c1","--c2","--c3","--c4","--c5"];
+let sb = null, DATA = [], realtime = null, rt = null;
+
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2400)}
+function status(m){ $("status").textContent = m; }
+
+// --- datos (solo después de iniciar sesión; RLS los protege en la base)
+async function load(){
+  const [ri, rtk] = await Promise.all([
+    sb.from("sc_indicadores").select("*").order("id"),
+    sb.from("sc_tareas").select("*").order("indicador_id").order("orden")
+  ]);
+  if(ri.error || rtk.error){ toast("No se pudieron cargar los datos"); $("totalNote").textContent="Sin acceso a los datos"; return; }
+  DATA = ri.data.map((d,i)=>({...d, color: COLORS.includes(d.color)?d.color:COLORS[i%5],
+    tasks: rtk.data.filter(t=>t.indicador_id===d.id)}));
+  render();
+}
+
+function render(){
+  const active = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.id : null;
+  const inds = $("inds");
+  inds.innerHTML = "";
+  DATA.forEach((ind,i)=>{
+    const sec = document.createElement("section");
+    sec.className = "card ind";
+    const pct = ind.tasks[0] && ind.tasks[0].unidad==="%";
+    const rows = ind.tasks.map(t=>`
+      <tr>
+        <td>${esc(t.nombre)}${t.actualizado_por?`<div class="by">${esc(t.actualizado_por)} · ${new Date(t.actualizado_en).toLocaleString("es-MX",{dateStyle:"short",timeStyle:"short"})}</div>`:""}</td>
+        <td class="num mono hide-sm">${nf.format(t.peso)}</td>
+        <td class="num mono">${nf0.format(t.meta)}<span class="unit">${t.unidad==="%"?"%":""}</span></td>
+        <td class="num"><input type="number" min="0" step="any" data-id="${t.id}" aria-label="Real ${esc(t.nombre)}" placeholder="—" value="${t.real??""}"></td>
+        <td style="width:22%"><div class="prog"><div id="p-${t.id}" style="width:0"></div></div></td>
+        <td class="num mono st" id="v-${t.id}">—</td>
+      </tr>`).join("");
+    sec.innerHTML = `
+      <div class="ind-head">
+        <div class="ind-title"><span class="dot" style="background:var(${ind.color})"></span>
+          <h3>${esc(ind.nombre)}</h3><span class="tag">Peso ${nf.format(ind.peso)}</span></div>
+        <div class="ind-score"><b class="mono" id="is-${i}">0.0%</b><span id="ip-${i}"></span></div>
+      </div>
+      <table>
+        <thead><tr><th>Tarea</th><th class="num hide-sm">Peso</th><th class="num">Meta${pct?"":" (miles MXN)"}</th><th class="num">Real</th><th></th><th class="num">Cumpl.</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    inds.appendChild(sec);
+  });
+  document.querySelectorAll("input[data-id]").forEach(inp=>{
+    const id = Number(inp.dataset.id);
+    inp.addEventListener("input",()=>{ task(id).real = inp.value===""?null:Number(inp.value); compute(); });
+    inp.addEventListener("change",()=>save(id, inp));
+  });
+  if(active){ const el=document.querySelector(`input[data-id="${active}"]`); if(el) el.focus(); }
+  $("wbar").innerHTML = DATA.map(d=>`<div style="flex:${d.peso};background:var(${d.color})" title="${esc(d.nombre)}: ${d.peso}">${nf.format(d.peso)}</div>`).join("");
+  $("legend").innerHTML = DATA.map(d=>`<div><i style="background:var(${d.color})"></i>${esc(d.nombre)} <span class="mono" style="color:var(--muted)">· ${nf.format(d.peso)}</span></div>`).join("");
+  $("nInd").textContent = DATA.length;
+  $("nTask").textContent = DATA.reduce((a,d)=>a+d.tasks.length,0);
+  compute();
+}
+const task = id => { for(const d of DATA) for(const t of d.tasks) if(t.id===id) return t; };
+
+async function save(id, inp){
+  const v = inp.value===""?null:Number(inp.value);
+  if(v!==null && (isNaN(v) || v<0)){ toast("Valor no válido"); return; }
+  inp.classList.add("saving");
+  const { error } = await sb.from("sc_tareas").update({ real: v }).eq("id", id);
+  inp.classList.remove("saving");
+  if(error){ toast("No se pudo guardar: "+error.message); return; }
+  toast("Guardado");
+}
+
+function compute(){
+  let total = 0, captured = 0, n = 0;
+  DATA.forEach((ind,i)=>{
+    let s = 0;
+    ind.tasks.forEach(t=>{
+      n++;
+      const v = t.real, pEl = $("p-"+t.id), vEl = $("v-"+t.id);
+      let p = 0;
+      if(v!==null && v!==undefined && !isNaN(v)){
+        captured++;
+        p = Math.max(0, Math.min(100, v / Number(t.meta) * 100));
+        pEl.style.width = p+"%"; pEl.style.background = statusColor(p);
+        vEl.textContent = nf.format(p)+"%"; vEl.style.color = statusColor(p);
+      } else { pEl.style.width = "0"; vEl.textContent = "—"; vEl.style.color = ""; }
+      s += Number(t.peso) * p / 100;
+    });
+    const pts = Number(ind.peso) * s / 100;
+    total += pts;
+    $("is-"+i).textContent = nf.format(s)+"%";
+    $("ip-"+i).textContent = `aporta ${nf.format(pts)} de ${nf.format(ind.peso)} pts`;
+  });
+  $("total").textContent = nf.format(total)+"%";
+  $("captured").textContent = captured;
+  $("totalNote").textContent = captured===0 ? "Captura el avance real para pronosticar" : `${captured} de ${n} tareas capturadas`;
+  const arc = $("ringArc"), C = 2*Math.PI*50;
+  arc.setAttribute("stroke-dasharray", `${C*total/100} ${C}`);
+  arc.setAttribute("stroke", captured ? statusColor(total) : "var(--accent)");
+}
+
+function subscribe(){
+  if(realtime) return;
+  realtime = sb.channel("sc-tareas-cambios")
+    .on("postgres_changes",{event:"*",schema:"public",table:"sc_tareas"},()=>{ clearTimeout(rt); rt=setTimeout(load,400); })
+    .subscribe(s=>{ if(s==="SUBSCRIBED") status("· en vivo"); });
+}
+
+// --- sesión
+function showApp(email){ $("login").hidden=true; $("app").hidden=false; $("who").hidden=false; $("btnOut").hidden=false; $("whoEmail").textContent=email||""; }
+function showLogin(){ $("login").hidden=false; $("app").hidden=true; $("who").hidden=true; $("btnOut").hidden=true; DATA=[]; $("inds").innerHTML=""; }
+
+$("loginForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const email=$("loginEmail").value.trim().toLowerCase(), m=$("loginMsg");
+  m.className="hint";
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ m.className="hint err"; m.textContent="Escribe un correo válido."; return; }
+  if(DOMAIN && !email.endsWith("@"+DOMAIN)){ m.className="hint err"; m.textContent=`Usa tu correo @${DOMAIN}.`; return; }
+  $("btnLogin").disabled=true; m.textContent="Enviando enlace…";
+  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: location.href.split("#")[0] } });
+  $("btnLogin").disabled=false;
+  if(error){
+    const msg=String(error.message||"").toLowerCase();
+    m.className="hint err";
+    m.textContent = (error.status===429 || msg.includes("rate limit"))
+      ? "Se alcanzó el límite de correos por hora. Espera unos minutos e intenta de nuevo."
+      : "No se pudo enviar el enlace: "+error.message;
+    return;
+  }
+  m.className="hint ok"; m.textContent=`Listo. Revisa ${email} y abre el enlace para entrar.`;
+});
+$("btnOut").addEventListener("click", async ()=>{
+  await sb.auth.signOut();
+  if(realtime){ sb.removeChannel(realtime); realtime=null; }
+  showLogin();
+});
+
+$("theme").onclick = ()=>{
+  const r = document.documentElement;
+  const dark = r.dataset.theme ? r.dataset.theme==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  r.dataset.theme = dark ? "light" : "dark";
+  try{ localStorage.setItem(KEY+"_theme", r.dataset.theme); }catch(e){}
+};
+try{ const t = localStorage.getItem(KEY+"_theme"); if(t) document.documentElement.dataset.theme = t; }catch(e){}
+
+async function start(){
+  const ready = CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && window.supabase;
+  if(!ready){ $("setup").hidden=false; return; }
+  sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY);
+  sb.auth.onAuthStateChange((_ev, session)=>{
+    const email = session && session.user && (session.user.email||"").toLowerCase();
+    if(session && (!DOMAIN || email.endsWith("@"+DOMAIN))){ showApp(email); load(); subscribe(); }
+    else if(session){ sb.auth.signOut(); showLogin(); }
+    else showLogin();
+  });
+  const { data } = await sb.auth.getSession();
+  if(!data.session) showLogin();
+}
+start();
+})();
+</script>
+</body>
+</html>
