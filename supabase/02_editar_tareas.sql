@@ -11,6 +11,9 @@
 
 -- 1. Lista de editores
 create table if not exists public.sc_editores (
+  email text primary key check (email = lower(email))
+);
+
 -- 2. ID automático para tareas nuevas (secuencia normal, sin identity)
 create sequence if not exists public.sc_tareas_id_seq as smallint owned by public.sc_tareas.id;
 alter table public.sc_tareas alter column id set default nextval('public.sc_tareas_id_seq');
