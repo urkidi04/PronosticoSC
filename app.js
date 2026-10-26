@@ -77,7 +77,7 @@ function renderList(){
           <td><span class="per">${Q(p.trimestre)} ${p.anio}</span></td>
           <td class="mono hide-sm">${sc.cap}/${sc.n}</td>
           <td class="score-td" style="min-width:140px"><div class="cell-score"><div class="prog"><div style="width:${sc.total}%;background:${sc.cap?statusColor(sc.total):"var(--track)"}"></div></div><span class="mono st">${nf.format(sc.total)}%</span></div></td>
-          <td class="act"><button class="ib" data-rep="${p.id}" title="Replicar" aria-label="Replicar">⧉</button>${ME.isAdmin?`<button class="ib del" data-delp="${p.id}" title="Eliminar" aria-label="Eliminar">🗑</button>`:""}</td>
+          <td class="act"><button class="ib" data-img="${p.id}" title="Generar imagen" aria-label="Generar imagen">🖼</button><button class="ib" data-rep="${p.id}" title="Replicar" aria-label="Replicar">⧉</button>${ME.isAdmin?`<button class="ib del" data-delp="${p.id}" title="Eliminar" aria-label="Eliminar">🗑</button>`:""}</td>
         </tr>`; }).join("")}</tbody></table>`
       : `<div class="empty big-empty">${PRONS.length ? "No hay pronósticos con estos filtros." : ME.isAdmin ? "Aún no hay pronósticos. Crea el primero con «+ Nuevo pronóstico»." : "Todavía no tienes pronósticos asignados."}</div>`}
     </section>`;
@@ -87,6 +87,7 @@ function renderList(){
   if($("fTxt")) $("fTxt").oninput = e=>{ filt.txt = e.target.value; const pos=e.target.selectionStart; renderList(); const el=$("fTxt"); el.focus(); el.setSelectionRange(pos,pos); };
   document.querySelectorAll("[data-open]").forEach(tr=>tr.onclick=e=>{ if(e.target.closest("button")) return; curId = Number(tr.dataset.open); window.scrollTo(0,0); render(); });
   document.querySelectorAll("[data-rep]").forEach(b=>b.onclick=()=>openRep(Number(b.dataset.rep)));
+  document.querySelectorAll("[data-img]").forEach(b=>b.onclick=()=>openImage(pron(Number(b.dataset.img))).catch(()=>{ $("dlgImg").close(); toast("No se pudo generar la imagen"); }));
   document.querySelectorAll("[data-delp]").forEach(b=>b.onclick=()=>askDelPron(Number(b.dataset.delp)));
 }
 
