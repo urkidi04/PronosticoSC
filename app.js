@@ -103,7 +103,7 @@ function renderDetail(){
         <div class="sub">${esc(p.email)} · Núm. empleado <span class="mono">${esc(e.num_empleado||"—")}</span></div>
       </div>
       <div class="tools">
-        <button id="btnRep">⧉ Replicar</button>
+        <button id="btnImg">🖼 Imagen</button><button id="btnRep">⧉ Replicar</button>
         ${ME.isAdmin?`<button id="btnEditP">Editar datos</button><button class="danger-ghost" id="btnDelP">Eliminar</button>`:""}
       </div>
     </section>
@@ -136,6 +136,7 @@ function renderDetail(){
     <p class="note">Cumplimiento de cada tarea = Real ÷ Meta (tope 100%). Indicador = Σ(peso tarea × cumplimiento). Total = Σ(peso indicador × cumplimiento del indicador).</p>`;
   $("btnBack").onclick = ()=>{ curId = null; render(); };
   $("btnRep").onclick = ()=>openRep(p.id);
+  $("btnImg").onclick = ()=>openImage(p).catch(e=>{ $("dlgImg").close(); toast("No se pudo generar la imagen"); });
   if(ME.isAdmin){
     $("btnEditP").onclick = ()=>openPron(p.id);
     $("btnDelP").onclick = ()=>askDelPron(p.id);
@@ -382,6 +383,120 @@ function askDelTask(id){
   confirmDlg("Eliminar tarea", `¿Eliminar «${t.nombre}»? Se borra también su valor real.`, "Eliminar",
     ()=>run(async()=>{ await API.eliminarTarea(id); await refresh(); }, "Tarea eliminada"));
 }
+
+// ---------- imagen ejecutiva del scorecard (PNG)
+const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const fmtD = d => `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
+const qRange = (anio, q) => [new Date(anio, (q-1)*3, 1), new Date(anio, q*3, 0)];
+async function scImage(p){
+  await (document.fonts ? document.fonts.ready : Promise.resolve());
+  const e = empOf(p), sc = score(p), [d0, d1] = qRange(p.anio, p.trimestre);
+  const F = '"IBM Plex Sans", system-ui, sans-serif', M = '"IBM Plex Mono", ui-monospace, monospace';
+  const C = { ink:"#1c1d1f", muted:"#6b6d72", line:"#e3e1dc", band:"#f6f5f2", navy:"#14284b", pend:"#fdf3d6",
+    good:"#1a7f4b", warn:"#b7791f", bad:"#c0392b", track:"#ecebe7", ind:["#1f5fbf","#0f8b8d","#7a4fbf","#d0752a","#b03a6f"] };
+  const st = v => v>=95 ? C.good : v>=80 ? C.warn : C.bad;
+  const cols = [
+    { k:"ind",  t:"Indicador",       w:250 }, { k:"pi", t:"Peso\nindicador", w:78, a:"c" },
+    { k:"tar",  t:"Tarea",           w:310 }, { k:"pt", t:"Peso\ntarea", w:70, a:"c" },
+    { k:"meta", t:"Meta",            w:112, a:"r" }, { k:"real", t:"Real", w:112, a:"r" },
+    { k:"cum",  t:"Cumplimiento",    w:150 }, { k:"med", t:"Medible", w:220 },
+    { k:"pts",  t:"Aporte\n(pts)",   w:76, a:"c" }
+  ];
+  const PAD = 32, RH = 32, HH = 46, TOP = 150, W = cols.reduce((a,c)=>a+c.w,0) + PAD*2;
+  const GMIN = 52, gH = i => Math.max(Math.max(1,i.tareas.length)*RH, GMIN);
+  const H = TOP + HH + p.indicadores.reduce((a,i)=>a+gH(i),0) + RH + 64;
+  const S = 2, cv = document.createElement("canvas"); cv.width = W*S; cv.height = H*S;
+  const x = cv.getContext("2d"); x.scale(S,S); x.textBaseline = "middle";
+  const txt = (s, X, Y, o={}) => { x.font = `${o.w||400} ${o.s||13}px ${o.m?M:F}`; x.fillStyle = o.c||C.ink; x.textAlign = o.a||"left";
+    let t = String(s); if(o.max){ while(x.measureText(t).width > o.max && t.length>1) t = t.slice(0,-2)+"…"; } x.fillText(t, X, Y); };
+  const wrap = (s, max, font) => { x.font = font; const out=[]; let line="";
+    String(s).split(/\s+/).forEach(w=>{ const tt = line?line+" "+w:w; if(x.measureText(tt).width>max && line){ out.push(line); line=w; } else line=tt; }); if(line) out.push(line); return out; };
+  const rect = (X,Y,w,h,c) => { x.fillStyle=c; x.fillRect(X,Y,w,h); };
+
+  // fondo + encabezado
+  rect(0,0,W,H,"#ffffff");
+  rect(0,0,W,118,C.navy);
+  txt(`Scorecard ${Q(p.trimestre)} ${p.anio}`, PAD, 38, { s:26, w:600, c:"#fff" });
+  txt(`${e.nombre || p.email}  ·  Núm. empleado ${e.num_empleado || "—"}  ·  ${p.email}`, PAD, 70, { s:14, c:"#c9d3e6" });
+  txt(`Periodo ${fmtD(d0)} – ${fmtD(d1)}`, PAD, 94, { s:13, c:"#9fb0cf" });
+  // total
+  const tc = sc.cap ? st(sc.total) : "#9fb0cf";
+  const bx = W - PAD - 250;
+  txt("Cumplimiento ponderado", bx, 30, { s:12, w:600, c:"#9fb0cf" });
+  txt(nf.format(sc.total)+"%", bx, 66, { s:38, w:600, c:"#fff", m:true });
+  txt(`${sc.cap} de ${sc.n} tareas con real`, bx, 98, { s:12, c:"#c9d3e6" });
+  rect(bx+150, 58, 100, 10, "rgba(255,255,255,.15)"); rect(bx+150, 58, sc.total, 10, tc);
+
+  // tabla: encabezado
+  let X = PAD, Y = TOP;
+  rect(PAD, Y, W-PAD*2, HH, C.band);
+  cols.forEach(c=>{ c.x = X; const ls = c.t.split("\n");
+    ls.forEach((l,i)=>txt(l, c.a==="c"?X+c.w/2: c.a==="r"?X+c.w-10:X+10, Y+HH/2+(i-(ls.length-1)/2)*15, { s:12, w:600, c:C.muted, a:c.a==="c"?"center":c.a==="r"?"right":"left" }));
+    X += c.w; });
+  Y += HH;
+  const col = k => cols.find(c=>c.k===k);
+  // filas
+  p.indicadores.forEach((ind, ii)=>{
+    const n = Math.max(1, ind.tareas.length), gh = gH(ind), off = (gh - n*RH)/2, s = sc.inds[ii];
+    rect(PAD, Y, W-PAD*2, gh, ii%2 ? "#ffffff" : "#fafaf8");
+    rect(PAD, Y, 4, gh, C.ind[ii % C.ind.length]);
+    // celdas agrupadas
+    const ci = col("ind"), lines = wrap(ind.nombre, ci.w-24, `600 13px ${F}`).slice(0, Math.max(1, Math.floor(gh/17)-1));
+    const blockH = lines.length*17 + 16, y0 = Y + gh/2 - blockH/2 + 8;
+    lines.forEach((l,i)=>txt(l, ci.x+14, y0+i*17, { s:13, w:600, max:ci.w-24 }));
+    txt(`${nf.format(s.s)}% cumplido`, ci.x+14, y0+lines.length*17, { s:11.5, c:C.muted });
+    txt(nf.format(ind.peso), col("pi").x+col("pi").w/2, Y+gh/2, { s:15, w:600, a:"center", m:true });
+    const cm = col("med"), ml = wrap(ind.medible||"—", cm.w-20, `400 12px ${F}`).slice(0, Math.max(1, Math.floor(gh/16)));
+    ml.forEach((l,i)=>txt(l, cm.x+10, Y+gh/2+(i-(ml.length-1)/2)*16, { s:12, c:C.muted, max:cm.w-20 }));
+    const cp = col("pts"); txt(nf.format(s.pts), cp.x+cp.w/2, Y+gh/2, { s:14, w:600, a:"center", m:true, c: sc.cap?st(s.s):C.muted });
+    // tareas
+    ind.tareas.forEach((t, ti)=>{
+      const ry = Y + off + ti*RH, cy = ry + RH/2, v = pctOf(t), pct = t.unidad === "%";
+      if(ti) { x.fillStyle = C.line; x.fillRect(col("tar").x, ry, col("cum").x+col("cum").w-col("tar").x, 1); }
+      txt(t.nombre, col("tar").x+10, cy, { s:13, max:col("tar").w-20 });
+      txt(nf.format(t.peso), col("pt").x+col("pt").w/2, cy, { s:12.5, a:"center", m:true, c:C.muted });
+      txt(nf0.format(t.meta)+(pct?" %":""), col("meta").x+col("meta").w-10, cy, { s:13, a:"right", m:true });
+      const cr = col("real");
+      if(v===null){ rect(cr.x+4, ry+4, cr.w-8, RH-8, C.pend); txt("pendiente", cr.x+cr.w-12, cy, { s:11.5, a:"right", c:C.warn }); }
+      else txt(nf0.format(t.real)+(pct?" %":""), cr.x+cr.w-10, cy, { s:13, a:"right", m:true, w:600 });
+      const cc = col("cum");
+      rect(cc.x+10, cy-4, 76, 8, C.track);
+      if(v!==null){ rect(cc.x+10, cy-4, 76*v/100, 8, st(v)); txt(nf.format(v)+"%", cc.x+cc.w-10, cy, { s:12.5, a:"right", m:true, w:600, c:st(v) }); }
+      else txt("—", cc.x+cc.w-10, cy, { s:12.5, a:"right", c:C.muted });
+    });
+    if(!ind.tareas.length) txt("Sin tareas", col("tar").x+10, Y+RH/2, { s:12.5, c:C.muted });
+    Y += gh; rect(PAD, Y-1, W-PAD*2, 1, "#d6d3cc");
+  });
+  // total
+  rect(PAD, Y, W-PAD*2, RH, C.navy);
+  txt("Total", col("ind").x+14, Y+RH/2, { s:13, w:600, c:"#fff" });
+  txt(nf.format(p.indicadores.reduce((a,i)=>a+Number(i.peso),0)), col("pi").x+col("pi").w/2, Y+RH/2, { s:14, w:600, a:"center", m:true, c:"#fff" });
+  txt(nf.format(sc.total), col("pts").x+col("pts").w/2, Y+RH/2, { s:14, w:600, a:"center", m:true, c:"#fff" });
+  txt("Cumplimiento ponderado "+nf.format(sc.total)+"%", col("med").x+col("med").w-10, Y+RH/2, { s:12.5, w:600, a:"right", c:"#fff" });
+  Y += RH;
+  const hoy = new Date();
+  txt(`Cumplimiento por tarea = Real ÷ Meta (tope 100%). Aporte = peso del indicador × cumplimiento del indicador.`, PAD, Y+24, { s:11.5, c:C.muted });
+  txt(`Generado ${hoy.getDate()} ${MESES[hoy.getMonth()]} ${hoy.getFullYear()} · Pronóstico SC`, W-PAD, Y+24, { s:11.5, c:C.muted, a:"right" });
+  return cv;
+}
+let imgBlob = null, imgName = "";
+async function openImage(p){
+  $("imgPrev").innerHTML = `<div class="empty">Generando…</div>`; $("dlgImg").showModal();
+  const cv = await scImage(p);
+  imgBlob = await new Promise(r=>cv.toBlob(r, "image/png"));
+  imgName = `Scorecard_${(empOf(p).nombre||p.email.split("@")[0]).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9]+/g,"_").replace(/^_|_$/g,"")}_${Q(p.trimestre)}_${p.anio}.png`;
+  const url = URL.createObjectURL(imgBlob);
+  $("imgPrev").innerHTML = `<img src="${url}" alt="Scorecard ${esc(label(p))}">`;
+}
+$("imgDown").onclick = ()=>{
+  if(!imgBlob) return;
+  const a = document.createElement("a"); a.href = URL.createObjectURL(imgBlob); a.download = imgName;
+  document.body.appendChild(a); a.click(); a.remove(); toast("Imagen descargada");
+};
+$("imgCopy").onclick = async ()=>{
+  try{ await navigator.clipboard.write([new ClipboardItem({ "image/png": imgBlob })]); toast("Imagen copiada: pégala en correo o Teams"); }
+  catch(e){ toast("Tu navegador no permite copiar imágenes; usa Descargar"); }
+};
 
 // ---------- tema
 $("theme").onclick = ()=>{

@@ -167,6 +167,10 @@ dialog.wide{width:min(560px,calc(100vw - 32px))}
   .head-card .tools{width:100%}
 }
 
+dialog.img-dlg{width:min(1200px,calc(100vw - 32px))}
+.img-prev{margin-top:14px;max-height:72vh;overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff}
+.img-prev img{display:block;width:100%;height:auto}
+
 </style>
 </head>
 <body>
@@ -278,6 +282,11 @@ dialog.wide{width:min(560px,calc(100vw - 32px))}
   </form>
 </dialog>
 
+<dialog id="dlgImg" class="img-dlg">
+  <div class="row"><h2 style="margin:0">Imagen del scorecard</h2>
+    <div class="tools"><button type="button" id="imgCopy">Copiar</button><button type="button" class="primary" id="imgDown">Descargar PNG</button><button type="button" data-close>Cerrar</button></div></div>
+  <div class="img-prev" id="imgPrev"></div>
+</dialog>
 <dialog id="dlgConfirm">
   <h2 id="cfTitle"></h2>
   <p id="cfText" style="margin:0 0 16px;color:var(--muted)"></p>
