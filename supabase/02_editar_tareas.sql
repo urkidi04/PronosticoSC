@@ -14,10 +14,22 @@ create table if not exists public.sc_editores (
   email text primary key check (email = lower(email))
 );
 
--- 2. ID automático para tareas nuevas (secuencia normal, sin identity)
-create sequence if not exists public.sc_tareas_id_seq as smallint owned by public.sc_tareas.id;
-alter table public.sc_tareas alter column id set default nextval('public.sc_tareas_id_seq');
-select setval('public.sc_tareas_id_seq', greatest((select coalesce(max(id),0) from public.sc_tareas), 1));
+-- 2. ID automático para tareas nuevas (funciona si ya es identity o si no)
+do $$
+declare seq text;
+begin
+  if not exists (select 1 from information_schema.columns
+                 where table_schema='public' and table_name='sc_tareas' and column_name='id' and is_identity='YES') then
+    seq := pg_get_serial_sequence('public.sc_tareas','id');
+    if seq is null then
+      create sequence if not exists public.sc_tareas_id_seq as smallint owned by public.sc_tareas.id;
+      alter table public.sc_tareas alter column id set default nextval('public.sc_tareas_id_seq');
+    end if;
+  end if;
+  seq := pg_get_serial_sequence('public.sc_tareas','id');
+  perform setval(seq, greatest((select coalesce(max(id),0) from public.sc_tareas), 1));
+  execute format('grant usage, select on sequence %s to authenticated', seq);
+end $$;
 alter table public.sc_tareas alter column unidad set default '%';
 alter table public.sc_tareas alter column orden  set default 99;
 
@@ -63,7 +75,6 @@ revoke all on public.sc_editores from anon, authenticated;
 grant select on public.sc_editores to authenticated;
 grant insert, delete on public.sc_tareas to authenticated;
 grant update (real, nombre, peso, meta, unidad, indicador_id, orden) on public.sc_tareas to authenticated;
-grant usage, select on sequence public.sc_tareas_id_seq to authenticated;
 
 -- 7. Verificación: debe listar INSERT, DELETE, varios UPDATE y la secuencia
 select privilege_type || coalesce(' ' || column_name, '') as permiso
@@ -73,5 +84,5 @@ union all
 select privilege_type from information_schema.table_privileges
 where table_schema='public' and table_name='sc_tareas' and grantee='authenticated' and privilege_type in ('INSERT','DELETE')
 union all
-select 'default id: ' || column_default from information_schema.columns
+select 'id automático: ' || coalesce(column_default, 'identity') from information_schema.columns
 where table_schema='public' and table_name='sc_tareas' and column_name='id';
