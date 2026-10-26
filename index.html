@@ -93,6 +93,24 @@ input.saving{opacity:.5}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:14px;opacity:0;pointer-events:none;transition:.2s}
 .toast.show{opacity:1;transform:translateX(-50%)}
 [hidden]{display:none!important}
+.act{white-space:nowrap;text-align:right;width:1%}
+.ib{border:none;background:none;padding:4px 6px;color:var(--muted);font-size:15px;line-height:1;border-radius:6px}
+.ib:hover{background:var(--track);color:var(--ink)}
+.ib.del:hover{color:var(--bad)}
+.addrow{margin-top:10px;font-size:13px}
+.warn{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--warn);margin:-4px 0 10px}
+.warn button{font-size:12px;padding:4px 9px}
+.empty{color:var(--muted);font-size:13px;padding:10px 8px}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);padding:20px;width:min(440px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+dialog h2{font-size:17px;margin:0 0 14px}
+dialog form{display:grid;gap:10px}
+dialog label{font-size:13px;font-weight:500;display:grid;gap:4px}
+dialog input,dialog select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
+dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+dialog .btns{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+button.danger{background:var(--bad);border-color:var(--bad);color:#fff;font-weight:600}
+.badge{font-size:11px;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:1px 8px;margin-left:6px}
 </style>
 </head>
 <body>
@@ -103,7 +121,7 @@ input.saving{opacity:.5}
       <div class="sub">Oficina Aplicaciones SAP/POS · Periodo 1-oct-2026 a 31-dic-2026</div>
     </div>
     <div class="tools">
-      <span class="who" id="who" hidden><span id="whoEmail"></span> <span class="live" id="status"></span></span>
+      <span class="who" id="who" hidden><span id="whoEmail"></span><span class="badge" id="edBadge" hidden>Editor</span> <span class="live" id="status"></span></span>
       <button id="btnOut" hidden>Cerrar sesión</button>
       <button id="theme" aria-label="Cambiar tema">◐ Tema</button>
     </div>
@@ -159,6 +177,29 @@ input.saving{opacity:.5}
   </p>
   </main>
 </div>
+<dialog id="dlg">
+  <form id="taskForm" method="dialog">
+    <h2 id="dlgTitle">Tarea</h2>
+    <label>Nombre<input id="fNombre" required maxlength="200"></label>
+    <label>Indicador<select id="fInd" required></select></label>
+    <div class="two">
+      <label>Peso en el indicador<input id="fPeso" type="number" min="0" step="any" required></label>
+      <label>Meta<input id="fMeta" type="number" min="0" step="any" required></label>
+    </div>
+    <div class="two">
+      <label>Unidad<input id="fUnidad" list="unidades" required value="%"></label>
+      <label>Orden<input id="fOrden" type="number" min="1" step="1"></label>
+    </div>
+    <datalist id="unidades"><option value="%"><option value="MXN miles"></datalist>
+    <span class="hint err" id="fMsg"></span>
+    <div class="btns"><button type="button" id="fCancel">Cancelar</button><button type="submit" class="primary" id="fSave">Guardar</button></div>
+  </form>
+</dialog>
+<dialog id="dlgDel">
+  <h2>Eliminar tarea</h2>
+  <p id="delText" style="margin:0 0 16px;color:var(--muted)"></p>
+  <div class="btns" style="display:flex;justify-content:flex-end;gap:8px"><button type="button" id="delCancel">Cancelar</button><button type="button" class="danger" id="delOk">Eliminar</button></div>
+</dialog>
 <div class="toast" id="toast" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -174,7 +215,7 @@ const nf0 = new Intl.NumberFormat("es-MX");
 const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const statusColor = p => p>=95 ? "var(--good)" : p>=80 ? "var(--warn)" : "var(--bad)";
 const COLORS = ["--c1","--c2","--c3","--c4","--c5"];
-let sb = null, DATA = [], realtime = null, rt = null;
+let sb = null, DATA = [], realtime = null, rt = null, isEditor = false, editingId = null, delId = null;
 
 function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2400)}
 function status(m){ $("status").textContent = m; }
@@ -186,6 +227,9 @@ async function load(){
     sb.from("sc_tareas").select("*").order("indicador_id").order("orden")
   ]);
   if(ri.error || rtk.error){ toast("No se pudieron cargar los datos"); $("totalNote").textContent="Sin acceso a los datos"; return; }
+  const re = await sb.from("sc_editores").select("email").limit(1);
+  isEditor = !re.error && re.data && re.data.length>0;
+  $("edBadge").hidden = !isEditor;
   DATA = ri.data.map((d,i)=>({...d, color: COLORS.includes(d.color)?d.color:COLORS[i%5],
     tasks: rtk.data.filter(t=>t.indicador_id===d.id)}));
   render();
@@ -207,17 +251,23 @@ function render(){
         <td class="num"><input type="number" min="0" step="any" data-id="${t.id}" aria-label="Real ${esc(t.nombre)}" placeholder="—" value="${t.real??""}"></td>
         <td style="width:22%"><div class="prog"><div id="p-${t.id}" style="width:0"></div></div></td>
         <td class="num mono st" id="v-${t.id}">—</td>
+        ${isEditor?`<td class="act"><button class="ib" data-edit="${t.id}" title="Editar" aria-label="Editar ${esc(t.nombre)}">✎</button><button class="ib del" data-del="${t.id}" title="Eliminar" aria-label="Eliminar ${esc(t.nombre)}">🗑</button></td>`:""}
       </tr>`).join("");
+    const sum = ind.tasks.reduce((a,t)=>a+Number(t.peso),0);
+    const warn = ind.tasks.length && Math.abs(sum-100)>0.01
+      ? `<div class="warn">⚠ Los pesos de las tareas suman ${nf.format(sum)} (deben sumar 100).${isEditor?` <button data-even="${ind.id}">Repartir parejo</button>`:""}</div>` : "";
     sec.innerHTML = `
       <div class="ind-head">
         <div class="ind-title"><span class="dot" style="background:var(${ind.color})"></span>
           <h3>${esc(ind.nombre)}</h3><span class="tag">Peso ${nf.format(ind.peso)}</span></div>
         <div class="ind-score"><b class="mono" id="is-${i}">0.0%</b><span id="ip-${i}"></span></div>
       </div>
-      <table>
-        <thead><tr><th>Tarea</th><th class="num hide-sm">Peso</th><th class="num">Meta${pct?"":" (miles MXN)"}</th><th class="num">Real</th><th></th><th class="num">Cumpl.</th></tr></thead>
+      ${warn}
+      ${ind.tasks.length?`<table>
+        <thead><tr><th>Tarea</th><th class="num hide-sm">Peso</th><th class="num">Meta${pct?"":" (miles MXN)"}</th><th class="num">Real</th><th></th><th class="num">Cumpl.</th>${isEditor?"<th></th>":""}</tr></thead>
         <tbody>${rows}</tbody>
-      </table>`;
+      </table>`:`<div class="empty">Sin tareas.</div>`}
+      ${isEditor?`<button class="addrow" data-add="${ind.id}">+ Agregar tarea</button>`:""}`;
     inds.appendChild(sec);
   });
   document.querySelectorAll("input[data-id]").forEach(inp=>{
@@ -225,6 +275,10 @@ function render(){
     inp.addEventListener("input",()=>{ task(id).real = inp.value===""?null:Number(inp.value); compute(); });
     inp.addEventListener("change",()=>save(id, inp));
   });
+  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openTask(Number(b.dataset.edit)));
+  document.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>openTask(null, Number(b.dataset.add)));
+  document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>askDel(Number(b.dataset.del)));
+  document.querySelectorAll("[data-even]").forEach(b=>b.onclick=()=>evenWeights(Number(b.dataset.even)));
   if(active){ const el=document.querySelector(`input[data-id="${active}"]`); if(el) el.focus(); }
   $("wbar").innerHTML = DATA.map(d=>`<div style="flex:${d.peso};background:var(${d.color})" title="${esc(d.nombre)}: ${d.peso}">${nf.format(d.peso)}</div>`).join("");
   $("legend").innerHTML = DATA.map(d=>`<div><i style="background:var(${d.color})"></i>${esc(d.nombre)} <span class="mono" style="color:var(--muted)">· ${nf.format(d.peso)}</span></div>`).join("");
@@ -233,6 +287,62 @@ function render(){
   compute();
 }
 const task = id => { for(const d of DATA) for(const t of d.tasks) if(t.id===id) return t; };
+
+// --- edición de tareas (solo editores; la base lo valida con RLS)
+function openTask(id, indId){
+  editingId = id;
+  const t = id ? task(id) : null;
+  const ind = DATA.find(d=>d.id===(t?t.indicador_id:indId));
+  $("dlgTitle").textContent = t ? "Editar tarea" : "Agregar tarea";
+  $("fInd").innerHTML = DATA.map(d=>`<option value="${d.id}">${esc(d.nombre)}</option>`).join("");
+  $("fInd").value = ind.id;
+  $("fNombre").value = t ? t.nombre : "";
+  $("fPeso").value = t ? Math.round(Number(t.peso)*1000)/1000 : Math.round(100/(ind.tasks.length+1)*1000)/1000;
+  $("fMeta").value = t ? Number(t.meta) : 100;
+  $("fUnidad").value = t ? t.unidad : (ind.tasks[0] ? ind.tasks[0].unidad : "%");
+  $("fOrden").value = t ? t.orden : ind.tasks.reduce((a,x)=>Math.max(a,x.orden),0)+1;
+  $("fMsg").textContent = "";
+  $("dlg").showModal(); $("fNombre").focus();
+}
+$("fCancel").onclick = ()=>$("dlg").close();
+$("taskForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const row = {
+    nombre: $("fNombre").value.trim(), indicador_id: Number($("fInd").value),
+    peso: Number($("fPeso").value), meta: Number($("fMeta").value),
+    unidad: $("fUnidad").value.trim() || "%", orden: Number($("fOrden").value) || 99
+  };
+  if(!row.nombre){ $("fMsg").textContent="Escribe el nombre."; return; }
+  if(!(row.meta>0)){ $("fMsg").textContent="La meta debe ser mayor a 0."; return; }
+  if(!(row.peso>=0)){ $("fMsg").textContent="El peso no es válido."; return; }
+  $("fSave").disabled = true;
+  const { error } = editingId
+    ? await sb.from("sc_tareas").update(row).eq("id", editingId)
+    : await sb.from("sc_tareas").insert(row);
+  $("fSave").disabled = false;
+  if(error){ $("fMsg").textContent = "No se pudo guardar: "+error.message; return; }
+  $("dlg").close(); toast(editingId?"Tarea actualizada":"Tarea agregada"); load();
+});
+function askDel(id){
+  delId = id; const t = task(id);
+  $("delText").textContent = `¿Eliminar «${t.nombre}»? Se borra también su valor real. No se puede deshacer.`;
+  $("dlgDel").showModal();
+}
+$("delCancel").onclick = ()=>$("dlgDel").close();
+$("delOk").onclick = async ()=>{
+  $("delOk").disabled = true;
+  const { error } = await sb.from("sc_tareas").delete().eq("id", delId);
+  $("delOk").disabled = false; $("dlgDel").close();
+  if(error){ toast("No se pudo eliminar: "+error.message); return; }
+  toast("Tarea eliminada"); load();
+};
+async function evenWeights(indId){
+  const ind = DATA.find(d=>d.id===indId), w = 100/ind.tasks.length;
+  const res = await Promise.all(ind.tasks.map(t=>sb.from("sc_tareas").update({peso:w}).eq("id",t.id)));
+  const err = res.find(r=>r.error);
+  if(err){ toast("No se pudo repartir: "+err.error.message); return; }
+  toast("Pesos repartidos"); load();
+}
 
 async function save(id, inp){
   const v = inp.value===""?null:Number(inp.value);
@@ -271,6 +381,7 @@ function compute(){
   const arc = $("ringArc"), C = 2*Math.PI*50;
   arc.setAttribute("stroke-dasharray", `${C*total/100} ${C}`);
   arc.setAttribute("stroke", captured ? statusColor(total) : "var(--accent)");
+  arc.style.opacity = total>0 ? 1 : 0;
 }
 
 function subscribe(){
