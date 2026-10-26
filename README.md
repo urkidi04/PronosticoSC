@@ -1,23 +1,29 @@
-# Pronóstico SC Q4 2026
+# Pronóstico SC
 
-Visualización y pronóstico del Scorecard Q4 2026 (Oficina Aplicaciones SAP/POS).
+Pronósticos de scorecard trimestral por colaborador (Oficina Aplicaciones SAP/POS).
 
-- Sitio estático (`index.html`) publicado con GitHub Pages.
+- Sitio estático publicado con GitHub Pages: `index.html` + `app.js` (interfaz) + `supabase-api.js` (datos).
 - **Acceso con enlace mágico al correo; solo correos `@bafar.com.mx`** (validado en el navegador y en las políticas RLS de la base).
-- Los datos del scorecard (indicadores, metas, pesos y valores reales) viven en **Supabase**, no en este repositorio. Sin sesión, la página no muestra ninguna cifra.
-- Cualquier usuario `@bafar.com.mx` captura la columna *Real*. Solo los **editores** (tabla `sc_editores`) pueden agregar, editar y eliminar tareas, y repartir pesos. Se registra quién hizo cada cambio y todo se ve en vivo.
+- Los datos (colaboradores, metas, pesos, valores reales) viven en **Supabase**, no en este repositorio.
 
-## Puesta en marcha
+## Roles
 
-### 1. Base en Supabase (mismo proyecto que HubInnovacion)
-1. **SQL Editor → New query**: pega y ejecuta [`supabase/schema.sql`](supabase/schema.sql).
-2. Ejecuta [`supabase/02_editar_tareas.sql`](supabase/02_editar_tareas.sql) (alta, edición y baja de tareas).
-3. Ejecuta los datos base y el editor inicial (archivos que se comparten por fuera, no están en el repo).
-4. Para agregar editores: `insert into public.sc_editores (email) values ('nombre@bafar.com.mx') on conflict do nothing;`
-5. **Authentication → URL Configuration → Redirect URLs**: agrega `https://urkidi04.github.io/PronosticoSC/`.
+| | Administrador (`pr_admins`) | Colaborador |
+|---|---|---|
+| Ver pronósticos | Todos | Solo los suyos |
+| Alta / eliminar pronóstico, cambiar año o trimestre | ✔ | — |
+| Agregar, editar y eliminar indicadores, tareas y ponderaciones | ✔ | En los suyos |
+| Capturar valor real | ✔ | En los suyos |
+| Replicar | A cualquier persona y trimestre | Los suyos, a otros trimestres |
 
-### 2. Configuración
-[`config.js`](config.js) usa la misma URL y *anon key* que HubInnovacion. La *anon key* es pública por diseño; lo que protege los datos son las políticas RLS. **Nunca** pongas aquí la *service_role key*.
+Cada pronóstico se asocia a un correo y número de empleado, con año y trimestre (Q1–Q4). Al replicar se copian indicadores y tareas; los valores reales solo si se marca la casilla. Si la persona ya tiene pronóstico en ese periodo, se omite.
 
-### 3. GitHub Pages
-**Settings → Pages → Deploy from a branch → `main` / `(root)`**.
+## Puesta en marcha (Supabase, mismo proyecto que HubInnovacion)
+1. **SQL Editor**: ejecuta [`supabase/schema.sql`](supabase/schema.sql) (función de dominio) y [`supabase/03_pronosticos.sql`](supabase/03_pronosticos.sql).
+2. Ejecuta el archivo privado con el administrador inicial (se comparte por fuera, no está en el repo).
+3. **Authentication → URL Configuration → Redirect URLs**: `https://urkidi04.github.io/PronosticoSC/`.
+4. **Settings → Pages**: `main` / `(root)`.
+
+[`config.js`](config.js) usa la *anon key*, pública por diseño; los datos los protegen las políticas RLS. **Nunca** pongas aquí la *service_role key*.
+
+> `02_editar_tareas.sql` y las tablas `sc_*` corresponden a la versión anterior (un solo scorecard); ya no las usa la página.
