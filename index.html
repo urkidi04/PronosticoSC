@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pronóstico SC</title>
+<meta name="theme-color" content="#1f2a5e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pronóstico SC">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
@@ -231,6 +237,12 @@ td.mx-none{color:var(--warn);font-weight:600;text-align:center}
 .ev-t td{font-size:13px} .ev-t tr.click{cursor:pointer} .ev-t tr.click:hover td{background:var(--bg)}
 @media (max-width:760px){ .ev-ks{grid-template-columns:repeat(2,1fr)} .ev-grid{grid-template-columns:1fr} }
 
+.install{background:color-mix(in srgb,var(--accent) 12%,var(--panel));color:var(--accent);border-color:transparent;font-weight:600}
+.iosTip{margin:0 0 14px} .link{border:none;background:none;color:var(--accent);padding:0 4px;font-weight:600}
+#codeForm{display:flex;flex-direction:column;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+#codeForm label{font-size:13px;font-weight:500}
+#codeForm input{font:inherit;font-family:"IBM Plex Mono",monospace;letter-spacing:.2em;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+
 </style>
 </head>
 <body>
@@ -242,11 +254,13 @@ td.mx-none{color:var(--warn);font-weight:600;text-align:center}
     </div>
     <div class="tools">
       <span class="who" id="who" hidden><span id="whoEmail"></span><span class="role" id="roleBadge"></span> <span class="live" id="status"></span></span>
+      <button id="btnInstall" class="install" hidden>⤓ Instalar app</button>
       <button id="btnOut" hidden>Cerrar sesión</button>
       <button id="theme" aria-label="Cambiar tema">◐ Tema</button>
     </div>
   </header>
-    <p class="setup" id="setup" hidden>Falta configurar la base: llena <code>config.js</code> y ejecuta los scripts de <code>supabase/</code>.</p>
+    <p class="setup iosTip" id="iosTip" hidden>Para instalar en iPhone o iPad: toca <b>Compartir</b> y luego <b>Agregar a pantalla de inicio</b>. <button type="button" class="link" id="iosTipClose">Entendido</button></p>
+  <p class="setup" id="setup" hidden>Falta configurar la base: llena <code>config.js</code> y ejecuta los scripts de <code>supabase/</code>.</p>
   <section class="card login" id="login" hidden aria-labelledby="h-login">
     <h2 id="h-login">Iniciar sesión</h2>
     <p>Acceso restringido a correos <b>@bafar.com.mx</b>. Te enviaremos un enlace a tu correo para entrar.</p>
@@ -255,6 +269,12 @@ td.mx-none{color:var(--warn);font-weight:600;text-align:center}
       <input id="loginEmail" type="email" autocomplete="email" placeholder="nombre@bafar.com.mx" required>
       <button type="submit" class="primary" id="btnLogin">Enviarme el enlace</button>
       <span class="hint" id="loginMsg" role="status"></span>
+    </form>
+    <form id="codeForm" novalidate hidden>
+      <label for="loginCode">¿Usas la app instalada? Escribe el código de 6 dígitos del correo</label>
+      <input id="loginCode" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456">
+      <button type="submit" id="btnCode">Entrar con código</button>
+      <span class="hint" id="codeMsg" role="status"></span>
     </form>
   </section>
 
@@ -379,7 +399,8 @@ td.mx-none{color:var(--warn);font-weight:600;text-align:center}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=202610271051"></script>
-<script src="supabase-api.js?v=202610271051"></script>
+<script src="app.js?v=202610271054"></script>
+<script src="supabase-api.js?v=202610271054"></script>
+<script src="pwa.js?v=202610271054"></script>
 </body>
 </html>

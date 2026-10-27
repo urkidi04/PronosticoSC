@@ -91,6 +91,17 @@ $("loginForm").addEventListener("submit", async e=>{
     return;
   }
   m.className = "hint ok"; m.textContent = `Listo. Revisa ${email} y abre el enlace para entrar.`;
+  $("codeForm").hidden = false;
+});
+$("codeForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const email = $("loginEmail").value.trim().toLowerCase(), token = $("loginCode").value.replace(/\D/g,""), m = $("codeMsg");
+  if(token.length < 6){ m.className = "hint err"; m.textContent = "Escribe el código que llegó a tu correo."; return; }
+  $("btnCode").disabled = true; m.className = "hint"; m.textContent = "Verificando…";
+  const { error } = await sb.auth.verifyOtp({ email, token, type: "email" });
+  $("btnCode").disabled = false;
+  if(error){ m.className = "hint err"; m.textContent = "Código incorrecto o vencido. Pide un enlace nuevo."; return; }
+  m.textContent = "";
 });
 $("btnOut").addEventListener("click", async ()=>{
   if(channel){ sb.removeChannel(channel); channel = null; }

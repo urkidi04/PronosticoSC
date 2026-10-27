@@ -18,6 +18,11 @@ Pronósticos de scorecard trimestral por colaborador (Oficina Aplicaciones SAP/P
 
 Cada pronóstico se asocia a un correo y número de empleado, con año y trimestre (Q1–Q4). Al replicar se copian indicadores y tareas; los valores reales solo si se marca la casilla. Si la persona ya tiene pronóstico en ese periodo, se omite.
 
+## App instalable (PWA)
+- Se instala con el botón **⤓ Instalar app** (Chrome/Edge en Android, Windows o Mac) o, en iPhone/iPad, desde Safari con **Compartir → Agregar a pantalla de inicio**.
+- `manifest.webmanifest`, `sw.js` (red primero; los datos de Supabase nunca se guardan en caché) e `icons/`.
+- Entrada con **código de 6 dígitos**: en la app instalada el enlace del correo abre el navegador, así que se puede escribir el código. Requiere que la plantilla de correo de Supabase incluya `{{ .Token }}`.
+
 ## Tablero del administrador
 - **Estructura y alineación**: indicadores del equipo, organigrama con cumplimiento (▲ ≥95 %, ● 80–95 %, ▼ <80 %), cascada de cada indicador del gerente hacia líderes y consultores, y matriz de alineación.
 - **Evaluación de alineación**: cobertura de cada indicador del gerente, indicadores sin alinear o con cadena rota, y estado por persona.
