@@ -243,6 +243,29 @@ td.mx-none{color:var(--warn);font-weight:600;text-align:center}
 #codeForm label{font-size:13px;font-weight:500}
 #codeForm input{font:inherit;font-family:"IBM Plex Mono",monospace;letter-spacing:.2em;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
 
+.est{display:inline-block;font-size:11.5px;font-weight:600;border-radius:999px;padding:1px 9px;margin-left:4px;white-space:nowrap;vertical-align:middle}
+.est-b{background:var(--track);color:var(--muted)} .est-p{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)} .est-l{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good)}
+.rel{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px}
+.rel-l{display:flex;align-items:center;gap:10px;flex-wrap:wrap} .rel-l .est{font-size:13px;padding:3px 12px;margin:0}
+.rel-por_liberar{border-color:var(--warn)} .rel-liberado{border-color:var(--good)}
+button.ok-btn{background:var(--good);border-color:var(--good)}
+.por-lib{color:var(--warn);font-weight:600}
+#fEst{font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+
+.teams-dlg{padding:0;overflow:hidden} .teams-dlg>.hint,.teams-dlg>.btns{margin:12px 18px}
+.tm-top{display:flex;align-items:center;gap:10px;background:#464775;color:#fff;padding:10px 16px;font-size:13px}
+.tm-logo{background:#fff;color:#464775;font-weight:700;border-radius:4px;width:22px;height:22px;display:grid;place-items:center}
+.tm-to{margin-left:auto;opacity:.85}
+.tm-msg{display:flex;gap:10px;padding:16px 18px;background:#f5f5f5;color:#242424}
+.tm-av{flex:none;width:32px;height:32px;border-radius:50%;background:#1f2a5e;color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
+.tm-who{font-size:12px;font-weight:600;margin-bottom:4px} .tm-who span{font-weight:400;color:#616161;margin-left:6px}
+.tm-card{background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:12px;max-width:620px}
+.tm-t{font-size:14px;margin-bottom:10px} .tm-card img{width:100%;border:1px solid #eee;border-radius:4px;display:block;max-height:340px;object-fit:cover;object-position:top}
+.tm-btn{margin-top:10px;background:#fff;border:1px solid #d1d1d1;color:#242424;font-weight:600;border-radius:4px}
+
+a.btn-a{display:inline-block;text-decoration:none;font-size:13px;border:1px solid var(--line);padding:7px 12px;border-radius:8px}
+a.btn-a.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+
 </style>
 </head>
 <body>
@@ -390,6 +413,11 @@ td.mx-none{color:var(--warn);font-weight:600;text-align:center}
     <div class="btns"><button type="button" data-close>Cancelar</button><button type="submit" class="primary">Guardar</button></div>
   </form>
 </dialog>
+<dialog id="dlgDev">
+  <h2>Devolver para corrección</h2>
+  <label style="display:grid;gap:6px;font-size:13px;font-weight:500">¿Qué debe corregir?<textarea id="devTxt" rows="4" maxlength="500" style="font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)"></textarea></label>
+  <div class="btns" style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px"><button type="button" data-close>Cancelar</button><button type="button" class="primary" id="devOk">Devolver y avisar por Teams</button></div>
+</dialog>
 <dialog id="dlgConfirm">
   <h2 id="cfTitle"></h2>
   <p id="cfText" style="margin:0 0 16px;color:var(--muted)"></p>
@@ -398,9 +426,11 @@ td.mx-none{color:var(--warn);font-weight:600;text-align:center}
 <div class="toast" id="toast" role="status"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.39.0/lib/msal-browser.min.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=202610271054"></script>
-<script src="supabase-api.js?v=202610271054"></script>
-<script src="pwa.js?v=202610271054"></script>
+<script src="app.js?v=202610271615"></script>
+<script src="teams.js?v=202610271615"></script>
+<script src="supabase-api.js?v=202610271615"></script>
+<script src="pwa.js?v=202610271615"></script>
 </body>
 </html>

@@ -12,7 +12,7 @@ const Q = n => "Q"+n;
 const THIS_YEAR = new Date().getFullYear();
 
 let ME = null, PRONS = [], EMPS = [], curId = null;
-const filt = { anio:"", q:0, txt:"" };
+const filt = { anio:"", q:0, txt:"", est:"" };
 
 function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),2600)}
 async function run(fn, ok){
@@ -20,7 +20,7 @@ async function run(fn, ok){
   catch(e){ toast(e.message || String(e)); throw e; }
 }
 const pron = id => PRONS.find(p=>p.id===id);
-const canEdit = p => ME.isAdmin || p.email === ME.email;
+const canEdit = p => ME.isAdmin || (p.email === ME.email && (p.estado || "borrador") === "borrador");
 const empOf = p => p.empleado || {};
 const label = p => `${empOf(p).nombre || p.email} · ${Q(p.trimestre)} ${p.anio}`;
 
@@ -51,19 +51,20 @@ function render(){ curId ? renderDetail() : view==="dash" ? renderDash() : view=
 // ---------- lista
 function renderList(){
   const years = [...new Set(PRONS.map(p=>p.anio))].sort((a,b)=>b-a);
-  let rows = PRONS.filter(p=>(!filt.anio || p.anio==filt.anio) && (!filt.q || p.trimestre==filt.q) &&
+  let rows = PRONS.filter(p=>(!filt.est || (p.estado||"borrador")===filt.est) && (!filt.anio || p.anio==filt.anio) && (!filt.q || p.trimestre==filt.q) &&
     (!filt.txt || (p.email+" "+(empOf(p).nombre||"")+" "+(empOf(p).num_empleado||"")).toLowerCase().includes(filt.txt.toLowerCase())));
   rows.sort((a,b)=> b.anio-a.anio || b.trimestre-a.trimestre || (empOf(a).nombre||a.email).localeCompare(empOf(b).nombre||b.email));
   $("main").innerHTML = navHtml() + `
     <div class="bar">
       <div>
         <h2 class="h">${ME.isAdmin ? "Pronósticos del equipo" : "Mis pronósticos"}</h2>
-        <div class="sub">${PRONS.length} pronóstico${PRONS.length===1?"":"s"}${ME.isAdmin?" · "+new Set(PRONS.map(p=>p.email)).size+" personas":""}</div>
+        <div class="sub">${PRONS.length} pronóstico${PRONS.length===1?"":"s"}${ME.isAdmin?" · "+new Set(PRONS.map(p=>p.email)).size+" personas":""}${(n=>n?` · <a href="#" id="lnkPor" class="por-lib">⏳ ${n} por liberar</a>`:"")(PRONS.filter(p=>p.estado==="por_liberar").length)}</div>
       </div>
       ${ME.isAdmin?`<button class="primary" id="btnNew">+ Nuevo pronóstico</button>`:""}
     </div>
     <div class="filters">
       <select id="fAnio" aria-label="Año"><option value="">Todos los años</option>${years.map(y=>`<option ${filt.anio==y?"selected":""}>${y}</option>`).join("")}</select>
+      <select id="fEst" aria-label="Estado"><option value="">Todos los estados</option>${Object.entries({borrador:"Borrador",por_liberar:"Por liberar",liberado:"Liberado"}).map(([k,l])=>`<option value="${k}" ${filt.est===k?"selected":""}>${l}</option>`).join("")}</select>
       <div class="chips" role="group" aria-label="Trimestre">${[0,1,2,3,4].map(q=>`<button class="chip ${filt.q===q?"on":""}" data-q="${q}">${q?Q(q):"Todos"}</button>`).join("")}</div>
       ${ME.isAdmin?`<input id="fTxt" type="search" placeholder="Buscar nombre, correo o núm. empleado" value="${esc(filt.txt)}">`:""}
     </div>
@@ -74,7 +75,7 @@ function renderList(){
         <tr class="click" data-open="${p.id}">
           ${ME.isAdmin?`<td><b>${esc(e.nombre||"—")}</b><div class="by">${esc(p.email)}</div></td>
           <td class="mono hide-sm">${esc(e.num_empleado||"—")}</td>`:""}
-          <td><span class="per">${Q(p.trimestre)} ${p.anio}</span></td>
+          <td><span class="per">${Q(p.trimestre)} ${p.anio}</span> ${estBadge(p)}</td>
           <td class="mono hide-sm">${sc.cap}/${sc.n}</td>
           <td class="score-td" style="min-width:140px"><div class="cell-score"><div class="prog"><div style="width:${sc.total}%;background:${sc.cap?statusColor(sc.total):"var(--track)"}"></div></div><span class="mono st">${nf.format(sc.total)}%</span></div></td>
           <td class="act"><button class="ib" data-img="${p.id}" title="Generar imagen" aria-label="Generar imagen">🖼</button><button class="ib" data-rep="${p.id}" title="Replicar" aria-label="Replicar">⧉</button>${ME.isAdmin?`<button class="ib del" data-delp="${p.id}" title="Eliminar" aria-label="Eliminar">🗑</button>`:""}</td>
@@ -84,6 +85,8 @@ function renderList(){
   bindNav();
   if($("btnNew")) $("btnNew").onclick = ()=>openPron(null);
   $("fAnio").onchange = e=>{ filt.anio = e.target.value; renderList(); };
+  $("fEst").onchange = e=>{ filt.est = e.target.value; renderList(); };
+  if($("lnkPor")) $("lnkPor").onclick = e=>{ e.preventDefault(); filt.est = "por_liberar"; renderList(); };
   document.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{ filt.q = Number(b.dataset.q); renderList(); });
   if($("fTxt")) $("fTxt").oninput = e=>{ filt.txt = e.target.value; const pos=e.target.selectionStart; renderList(); const el=$("fTxt"); el.focus(); el.setSelectionRange(pos,pos); };
   document.querySelectorAll("[data-open]").forEach(tr=>tr.onclick=e=>{ if(e.target.closest("button")) return; curId = Number(tr.dataset.open); window.scrollTo(0,0); render(); });
@@ -100,7 +103,7 @@ function renderDetail(){
     <button class="back" id="btnBack">← ${view==="dash"?"Estructura y alineación":ME.isAdmin?"Pronósticos del equipo":"Mis pronósticos"}</button>
     <section class="card head-card">
       <div>
-        <div class="per big-per">${Q(p.trimestre)} ${p.anio}</div>
+        <div class="per big-per">${Q(p.trimestre)} ${p.anio}</div> ${estBadge(p)}
         <h2 class="h">${esc(e.nombre||p.email)}</h2>
         <div class="sub">${esc(p.email)} · Núm. empleado <span class="mono">${esc(e.num_empleado||"—")}</span></div>
       </div>
@@ -109,6 +112,7 @@ function renderDetail(){
         ${ME.isAdmin?`<button id="btnEditP">Editar datos</button><button class="danger-ghost" id="btnDelP">Eliminar</button>`:""}
       </div>
     </section>
+    ${relHtml(p)}
     <div class="grid">
       <section class="card">
         <h2>Cumplimiento ponderado</h2>
@@ -138,6 +142,7 @@ function renderDetail(){
     <p class="note">Cumplimiento de cada tarea = Real ÷ Meta (tope 100%). Indicador = Σ(peso tarea × cumplimiento). Total = Σ(peso indicador × cumplimiento del indicador).</p>`;
   $("btnBack").onclick = ()=>{ curId = null; render(); };
   $("btnRep").onclick = ()=>openRep(p.id);
+  bindRel(p);
   $("btnImg").onclick = ()=>openImage(p).catch(e=>{ $("dlgImg").close(); toast("No se pudo generar la imagen"); });
   if(ME.isAdmin){
     $("btnEditP").onclick = ()=>openPron(p.id);
@@ -435,6 +440,11 @@ async function scImage(p){
   txt(`Scorecard ${Q(p.trimestre)} ${p.anio}`, PAD, 38, { s:26, w:600, c:"#fff" });
   txt(`${e.nombre || p.email}  ·  Núm. empleado ${e.num_empleado || "—"}  ·  ${p.email}`, PAD, 70, { s:14, c:"#c9d3e6" });
   txt(`Periodo ${fmtD(d0)} – ${fmtD(d1)}`, PAD, 94, { s:13, c:"#9fb0cf" });
+  { const e2 = p.estado || "borrador", lbl = e2==="liberado" ? `✓ LIBERADO · ${fmtD(new Date(p.liberado_en||Date.now()))}${p.liberado_por?" · "+p.liberado_por:""}` : e2==="por_liberar" ? "⏳ POR LIBERAR" : "BORRADOR";
+    x.font = `600 12px ${F}`; const tw = x.measureText(lbl).width + 22, bxx = PAD + 330, byy = 82;
+    x.fillStyle = e2==="liberado" ? "#1a7f4b" : e2==="por_liberar" ? "#b7791f" : "rgba(255,255,255,.18)";
+    x.beginPath(); x.roundRect ? x.roundRect(bxx, byy, tw, 24, 12) : x.rect(bxx, byy, tw, 24); x.fill();
+    txt(lbl, bxx+11, byy+12, { s:12, w:600, c:"#fff" }); }
   // total
   const tc = sc.cap ? st(sc.total) : "#9fb0cf";
   const bx = W - PAD - 250;
@@ -814,6 +824,53 @@ function evalHtml(M){
         <td class="by" style="display:table-cell">${!x.p ? "Crear o replicar su pronóstico" : x.items.filter(y=>y.st!=="ok").map(y=>esc(y.i.nombre)+(y.st==="broken"?" (cadena rota)":"")).join(" · ") || "—"}</td>
       </tr>`; }).join("")}</tbody></table></div>
   </section>`;
+}
+
+// ---------- liberación: Borrador → Por liberar → Liberado (con aviso por Teams e imagen)
+const EST = { borrador:["Borrador","est-b"], por_liberar:["Por liberar","est-p"], liberado:["Liberado","est-l"] };
+const estOf = p => p.estado || "borrador";
+const estBadge = p => { const [l,c] = EST[estOf(p)]; return `<span class="est ${c}">${estOf(p)==="liberado"?"✓ ":estOf(p)==="por_liberar"?"⏳ ":""}${l}</span>`; };
+function pesosOk(p){
+  return p.indicadores.length && Math.abs(p.indicadores.reduce((a,i)=>a+Number(i.peso),0)-100)<=0.01 &&
+    p.indicadores.every(i=>i.tareas.length && Math.abs(i.tareas.reduce((a,t)=>a+Number(t.peso),0)-100)<=0.01);
+}
+async function imgData(p){ const cv = await scImage(p); return cv.toDataURL("image/png"); }
+function relHtml(p){
+  const e = estOf(p), own = p.email === ME.email;
+  const btn = [];
+  if(e==="borrador" && own && !ME.isAdmin) btn.push(`<button class="primary" id="btnSol">Enviar a liberación</button>`);
+  if(ME.isAdmin && e!=="liberado") btn.push(`<button class="primary ok-btn" id="btnLib">✓ Liberar</button>`);
+  if(ME.isAdmin && e==="por_liberar") btn.push(`<button id="btnDev">Devolver</button>`);
+  if(ME.isAdmin && e==="liberado") btn.push(`<button id="btnReab">Reabrir</button>`);
+  const info = e==="liberado" ? `Liberado el ${new Date(p.liberado_en).toLocaleDateString("es-MX",{dateStyle:"medium"})} por ${esc(p.liberado_por||"")}. La estructura queda bloqueada; el valor real se sigue capturando.`
+    : e==="por_liberar" ? `Enviado a liberación el ${new Date(p.solicitado_en).toLocaleDateString("es-MX",{dateStyle:"medium"})}. ${ME.isAdmin?"Revísalo y libéralo o devuélvelo.":"Mientras se revisa, la estructura queda bloqueada."}`
+    : p.comentario ? `Devuelto con comentario: «${esc(p.comentario)}»` : own && !ME.isAdmin ? "Cuando tus indicadores, tareas y pesos estén listos, envíalo a liberación." : "";
+  return `<section class="card rel rel-${e}"><div class="rel-l">${estBadge(p)}<span class="hint">${info}</span></div><div class="tools">${btn.join("")}</div></section>`;
+}
+function bindRel(p){
+  const go = async (b, fn) => { b.disabled = true; try{ await fn(); } catch(e){ toast(e.message); } b.disabled = false; };
+  if($("btnSol")) $("btnSol").onclick = e => go(e.target, async ()=>{
+    if(!pesosOk(p)) throw new Error("Antes de enviarlo, los pesos de indicadores y de tareas deben sumar 100.");
+    const r = await API.solicitarLiberacion(p.id, await imgData({ ...p, estado:"por_liberar", solicitado_en:new Date().toISOString() }));
+    await refresh(); teamsSent(r);
+  });
+  if($("btnLib")) $("btnLib").onclick = e => go(e.target, async ()=>{
+    if(!pesosOk(p)) throw new Error("No se puede liberar: los pesos de indicadores y de tareas deben sumar 100.");
+    const r = await API.liberar(p.id, await imgData({ ...p, estado:"liberado", liberado_en:new Date().toISOString(), liberado_por:ME.email }));
+    await refresh(); teamsSent(r);
+  });
+  if($("btnDev")) $("btnDev").onclick = ()=>{ $("devTxt").value = ""; $("dlgDev").showModal(); $("devTxt").focus(); };
+  $("devOk").onclick = e => go(e.target, async ()=>{
+    const c = $("devTxt").value.trim(); if(!c) throw new Error("Escribe qué debe corregir.");
+    const r = await API.devolver(curId, c); $("dlgDev").close(); await refresh(); teamsSent(r);
+  });
+  if($("btnReab")) $("btnReab").onclick = e => go(e.target, async ()=>{ await API.reabrir(p.id); await refresh(); toast("Pronóstico reabierto como borrador"); });
+}
+function teamsSent(r){
+  if(!r) return;
+  if(r.preview && window.showTeamsPreview) return window.showTeamsPreview(r);
+  if(r.manual && window.showTeamsManual){ toast("Estado actualizado"); return window.showTeamsManual(r); }
+  toast(r.enviado ? `Aviso enviado por Teams a ${r.para_nombre || r.para}` : `Estado actualizado. ${r.error ? "No se pudo enviar a Teams: "+r.error : ""}`);
 }
 
 // ---------- tema

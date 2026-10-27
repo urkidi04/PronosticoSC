@@ -52,8 +52,23 @@ window.API = {
     else chk(await sb.from("pr_tareas").insert(row));
   },
   async eliminarTarea(id){ chkRows(await sb.from("pr_tareas").delete().eq("id", id).select("id")); },
-  async capturarReal(id, real){ chkRows(await sb.from("pr_tareas").update({ real }).eq("id", id).select("id")); }
+  async capturarReal(id, real){ chkRows(await sb.from("pr_tareas").update({ real }).eq("id", id).select("id")); },
+  async solicitarLiberacion(pid, img){ return liberacion(pid, "solicitar", null, img); },
+  async liberar(pid, img){ return liberacion(pid, "liberar", null, img); },
+  async devolver(pid, comentario){ return liberacion(pid, "devolver", comentario, null); },
+  async reabrir(pid){ chk(await sb.rpc("pr_liberacion", { pid, accion: "reabrir", coment: null })); }
 };
+
+// ---------- liberación + aviso por Teams
+async function liberacion(pid, accion, coment, img){
+  await window.Teams.prepare(me);                     // inicio de sesión de Microsoft (si hace falta) dentro del clic
+  const d = chk(await sb.rpc("pr_liberacion", { pid, accion, coment }));
+  const per = `Q${d.trimestre} ${d.anio}`;
+  const texto = accion === "solicitar" ? `<b>${d.de_nombre}</b> envió su pronóstico <b>${per}</b> para que lo liberes.`
+    : accion === "liberar" ? `Tu pronóstico <b>${per}</b> fue <b>liberado</b>. Ya puedes capturar tus avances.`
+    : `Tu pronóstico <b>${per}</b> fue <b>devuelto</b> para corrección:<br>«${String(coment).replace(/[<>&]/g,"")}»`;
+  return window.Teams.send({ para: d.para, para_nombre: d.para_nombre, texto, img });
+}
 
 // ---------- sesión
 function showLogin(){ $("login").hidden = false; $("btnOut").hidden = true; window.App.stop(); }
