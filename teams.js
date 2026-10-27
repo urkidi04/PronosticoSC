@@ -4,7 +4,7 @@
 (function(){
   const CFG = window.APP_CONFIG || {};
   const SCOPES = ["User.Read", "Chat.Create", "ChatMessage.Send"];
-  const APP_URL = location.origin + location.pathname;
+  const APP_URL = location.origin + location.pathname.replace(/index\.html$/, "");  // debe coincidir con el redirect URI registrado
   let app = null, ready = null;
   const enabled = () => !!(CFG.MS_CLIENT_ID && CFG.MS_TENANT_ID && window.msal);
   function init(){
