@@ -46,7 +46,7 @@
     prepare(email){ pending = enabled() ? token(email).then(t=>(tokCache=t)).catch(e=>{ tokCache = null; this.lastError = e.message; }) : null; return pending; },
     async ready(){ if(pending) await pending; },
     async send({ para, para_nombre, texto, img }){
-      const plain = texto.replace(/<br>/g, "\n").replace(/<[^>]+>/g, "");
+      const plain = texto.replace(/<br>/g, "\n").replace(/<a href="([^"]+)">([^<]+)<\/a>/g, "$2 ($1)").replace(/<[^>]+>/g, "");
       const manual = { manual: true, para, para_nombre, texto: plain, img,
         link: `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(para)}&message=${encodeURIComponent(plain + "\n" + APP_URL)}` };
       if(!enabled()) return manual;

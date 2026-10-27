@@ -67,7 +67,7 @@ async function liberacion(pid, accion, coment, img){
   const d = chk(await sb.rpc("pr_liberacion", { pid, accion, coment }));
   const per = `Q${d.trimestre} ${d.anio}`;
   const texto = accion === "solicitar" ? `<b>${d.de_nombre}</b> envió su pronóstico <b>${per}</b> para que lo liberes.`
-    : accion === "liberar" ? `Tu pronóstico <b>${per}</b> fue <b>liberado</b>. Ya puedes capturar en Corner.`
+    : accion === "liberar" ? `Tu pronóstico <b>${per}</b> fue <b>liberado</b>. Ya puedes capturar en <a href="https://bafar.csod.com/">Corner</a>.`
     : `Tu pronóstico <b>${per}</b> fue <b>devuelto</b> para corrección:<br>«${String(coment).replace(/[<>&]/g,"")}»`;
   return window.Teams.send({ para: d.para, para_nombre: d.para_nombre, texto, img });
 }
