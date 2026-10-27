@@ -8,7 +8,7 @@ window.APP_CONFIG = {
   ALLOWED_DOMAIN: "bafar.com.mx",
   // Microsoft Graph (avisos por Teams). Entra ID → App registrations → Pronóstico SC.
   // No son secretos: identifican la app. Vacíos = se usa el respaldo (abrir Teams y pegar la imagen).
-  MS_CLIENT_ID: "",
-  MS_TENANT_ID: ""
+  MS_CLIENT_ID: "7e28716c-2b6f-42e9-b654-ebec8a418a84",
+  MS_TENANT_ID: "3e67a7ed-0ddf-4afa-ba03-f204fad6d749"
 };
  
