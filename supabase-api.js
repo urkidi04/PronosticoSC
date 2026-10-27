@@ -56,16 +56,18 @@ window.API = {
   async solicitarLiberacion(pid, img){ return liberacion(pid, "solicitar", null, img); },
   async liberar(pid, img){ return liberacion(pid, "liberar", null, img); },
   async devolver(pid, comentario){ return liberacion(pid, "devolver", comentario, null); },
+  prepararTeams(){ if(window.Teams) window.Teams.prepare(me); },
+  teams(){ return window.Teams && window.Teams.enabled() ? { conectado: window.Teams.connected(), conectar: ()=>window.Teams.connect(me) } : null; },
   async reabrir(pid){ chk(await sb.rpc("pr_liberacion", { pid, accion: "reabrir", coment: null })); }
 };
 
 // ---------- liberación + aviso por Teams
 async function liberacion(pid, accion, coment, img){
-  await window.Teams.prepare(me);                     // inicio de sesión de Microsoft (si hace falta) dentro del clic
+  await window.Teams.ready();                         // el token se pidió en el instante del clic
   const d = chk(await sb.rpc("pr_liberacion", { pid, accion, coment }));
   const per = `Q${d.trimestre} ${d.anio}`;
   const texto = accion === "solicitar" ? `<b>${d.de_nombre}</b> envió su pronóstico <b>${per}</b> para que lo liberes.`
-    : accion === "liberar" ? `Tu pronóstico <b>${per}</b> fue <b>liberado</b>. Ya puedes capturar tus avances.`
+    : accion === "liberar" ? `Tu pronóstico <b>${per}</b> fue <b>liberado</b>. Ya puedes capturar en Corner.`
     : `Tu pronóstico <b>${per}</b> fue <b>devuelto</b> para corrección:<br>«${String(coment).replace(/[<>&]/g,"")}»`;
   return window.Teams.send({ para: d.para, para_nombre: d.para_nombre, texto, img });
 }

@@ -842,6 +842,8 @@ function relHtml(p){
   if(ME.isAdmin && e!=="liberado") btn.push(`<button class="primary ok-btn" id="btnLib">✓ Liberar</button>`);
   if(ME.isAdmin && e==="por_liberar") btn.push(`<button id="btnDev">Devolver</button>`);
   if(ME.isAdmin && e==="liberado") btn.push(`<button id="btnReab">Reabrir</button>`);
+  const tm = API.teams ? API.teams() : null;
+  if(tm && !tm.conectado && btn.length) btn.unshift(`<button id="btnTeams" title="Una sola vez: permite enviar los avisos por Teams automáticamente">Conectar Teams</button>`);
   const info = e==="liberado" ? `Liberado el ${new Date(p.liberado_en).toLocaleDateString("es-MX",{dateStyle:"medium"})} por ${esc(p.liberado_por||"")}. La estructura queda bloqueada; el valor real se sigue capturando.`
     : e==="por_liberar" ? `Enviado a liberación el ${new Date(p.solicitado_en).toLocaleDateString("es-MX",{dateStyle:"medium"})}. ${ME.isAdmin?"Revísalo y libéralo o devuélvelo.":"Mientras se revisa, la estructura queda bloqueada."}`
     : p.comentario ? `Devuelto con comentario: «${esc(p.comentario)}»` : own && !ME.isAdmin ? "Cuando tus indicadores, tareas y pesos estén listos, envíalo a liberación." : "";
@@ -849,21 +851,23 @@ function relHtml(p){
 }
 function bindRel(p){
   const go = async (b, fn) => { b.disabled = true; try{ await fn(); } catch(e){ toast(e.message); } b.disabled = false; };
-  if($("btnSol")) $("btnSol").onclick = e => go(e.target, async ()=>{
+  const pre = () => { if(API.prepararTeams) API.prepararTeams(); };
+  if($("btnSol")) $("btnSol").onclick = e => { pre(); go(e.target, async ()=>{
     if(!pesosOk(p)) throw new Error("Antes de enviarlo, los pesos de indicadores y de tareas deben sumar 100.");
     const r = await API.solicitarLiberacion(p.id, await imgData({ ...p, estado:"por_liberar", solicitado_en:new Date().toISOString() }));
     await refresh(); teamsSent(r);
-  });
-  if($("btnLib")) $("btnLib").onclick = e => go(e.target, async ()=>{
+  }); };
+  if($("btnLib")) $("btnLib").onclick = e => { pre(); go(e.target, async ()=>{
     if(!pesosOk(p)) throw new Error("No se puede liberar: los pesos de indicadores y de tareas deben sumar 100.");
     const r = await API.liberar(p.id, await imgData({ ...p, estado:"liberado", liberado_en:new Date().toISOString(), liberado_por:ME.email }));
     await refresh(); teamsSent(r);
-  });
+  }); };
   if($("btnDev")) $("btnDev").onclick = ()=>{ $("devTxt").value = ""; $("dlgDev").showModal(); $("devTxt").focus(); };
-  $("devOk").onclick = e => go(e.target, async ()=>{
+  $("devOk").onclick = e => { pre(); go(e.target, async ()=>{
     const c = $("devTxt").value.trim(); if(!c) throw new Error("Escribe qué debe corregir.");
     const r = await API.devolver(curId, c); $("dlgDev").close(); await refresh(); teamsSent(r);
-  });
+  }); };
+  if($("btnTeams")) $("btnTeams").onclick = e => go(e.target, async ()=>{ await API.teams().conectar(); toast("Teams conectado: los avisos se enviarán automáticamente"); renderDetail(); });
   if($("btnReab")) $("btnReab").onclick = e => go(e.target, async ()=>{ await API.reabrir(p.id); await refresh(); toast("Pronóstico reabierto como borrador"); });
 }
 function teamsSent(r){

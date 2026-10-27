@@ -36,29 +36,37 @@
   const toJpeg = src => new Promise((ok, ko)=>{ const im = new Image(); im.onload = ()=>{ const k = Math.min(1, 2000/im.width), c = document.createElement("canvas");
     c.width = Math.round(im.width*k); c.height = Math.round(im.height*k); const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0,0,c.width,c.height);
     x.drawImage(im, 0, 0, c.width, c.height); ok(c.toDataURL("image/jpeg", 0.85)); }; im.onerror = ko; im.src = src; });
+  let pending = null;
   window.Teams = {
     enabled,
-    // pedirlo al inicio del clic para que la ventana de inicio de sesión no la bloquee el navegador
-    async prepare(email){ try{ tokCache = enabled() ? await token(email) : null; }catch(e){ tokCache = null; this.lastError = e.message; } },
+    connected(){ try{ return !!(app && app.getAllAccounts().length); }catch(e){ return false; } },
+    // conexión de una sola vez (ventana de Microsoft); después los envíos son silenciosos
+    async connect(email){ await init(); const r = await app.loginPopup({ scopes: SCOPES, loginHint: email, prompt: "select_account" }); app.setActiveAccount && app.setActiveAccount(r.account); return r.account; },
+    // se llama en el instante del clic, antes de cualquier otra espera, para que el navegador no bloquee la ventana
+    prepare(email){ pending = enabled() ? token(email).then(t=>(tokCache=t)).catch(e=>{ tokCache = null; this.lastError = e.message; }) : null; return pending; },
+    async ready(){ if(pending) await pending; },
     async send({ para, para_nombre, texto, img }){
       const plain = texto.replace(/<br>/g, "\n").replace(/<[^>]+>/g, "");
       const manual = { manual: true, para, para_nombre, texto: plain, img,
         link: `https://teams.microsoft.com/l/chat/0/0?users=${encodeURIComponent(para)}&message=${encodeURIComponent(plain + "\n" + APP_URL)}` };
       if(!enabled()) return manual;
       try{
+        if(pending) await pending;
         const tok = tokCache || await token();
+        if(!tok) throw new Error(this.lastError || "sin sesión de Microsoft");
         const me = await graph(tok, "GET", "/me?$select=id");
         const chat = await graph(tok, "POST", "/chats", { chatType: "oneOnOne", members: [member(me.id), member(para)] });
         const html = `<p>${texto}</p>` + (img ? `<p><img src="../hostedContents/1/$value" alt="Scorecard" style="max-width:100%"></p>` : "") +
-          `<p><a href="${APP_URL}">Abrir Pronóstico SC</a></p>`;
+          `<p><a href="${APP_URL}">${APP_URL}</a></p>`;
         const body = { body: { contentType: "html", content: html } };
         if(img){ const jpg = await toJpeg(img); body.hostedContents = [{ "@microsoft.graph.temporaryId": "1", contentBytes: jpg.split(",")[1], contentType: "image/jpeg" }]; }
         await graph(tok, "POST", `/chats/${chat.id}/messages`, body);
         return { enviado: true, para, para_nombre };
       }catch(e){ return { ...manual, error: e.message }; }
-      finally{ tokCache = null; }
+      finally{ tokCache = null; pending = null; }
     }
   };
+  init().catch(()=>{});                                  // listo antes del primer clic
   // respaldo manual: copiar imagen y abrir el chat
   window.showTeamsManual = r => {
     let d = document.getElementById("dlgManual");
