@@ -25,7 +25,7 @@ Cada pronóstico se asocia a un correo y número de empleado, con año y trimest
 - Cada indicador puede alinearse a un indicador de su jefe en el mismo periodo. Al replicar a un colaborador directo, la alineación se asigna sola.
 
 ## Puesta en marcha (Supabase, mismo proyecto que HubInnovacion)
-1. **SQL Editor**: ejecuta [`supabase/schema.sql`](supabase/schema.sql) (función de dominio) [`supabase/03_pronosticos.sql`](supabase/03_pronosticos.sql) y [`supabase/04_estructura.sql`](supabase/04_estructura.sql) y [`supabase/05_posicion.sql`](supabase/05_posicion.sql).
+1. **SQL Editor**: ejecuta, en orden, [`schema.sql`](supabase/schema.sql), [`03_pronosticos.sql`](supabase/03_pronosticos.sql), [`04_estructura.sql`](supabase/04_estructura.sql) y [`05_posicion.sql`](supabase/05_posicion.sql).
 2. Ejecuta los archivos privados con el administrador inicial y la estructura del equipo (se comparte por fuera, no está en el repo).
 3. **Authentication → URL Configuration → Redirect URLs**: `https://urkidi04.github.io/PronosticoSC/`.
 4. **Settings → Pages**: `main` / `(root)`.
