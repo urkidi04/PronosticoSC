@@ -170,6 +170,55 @@ dialog.wide{width:min(560px,calc(100vw - 32px))}
 dialog.img-dlg{width:min(1200px,calc(100vw - 32px))}
 .img-prev{margin-top:14px;max-height:72vh;overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff}
 .img-prev img{display:block;width:100%;height:auto}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:-6px 0 18px}
+.tab{border:none;background:none;border-bottom:2px solid transparent;border-radius:0;padding:8px 12px;font-size:14px;color:var(--muted)}
+.tab.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+#dPer{font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+.tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.tile span{font-size:12px;color:var(--muted)} .tile b{font-size:26px;font-weight:600} .tile small{font-size:12px;color:var(--muted)}
+.tile.t-bad b{color:var(--bad)}
+.org-card{margin-bottom:16px;overflow-x:auto}
+.legend-st{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:-4px 0 14px}
+.org{min-width:900px}
+.org-top{display:flex;justify-content:center;margin-bottom:18px;position:relative}
+.org-top::after{content:"";position:absolute;left:50%;bottom:-18px;height:18px;border-left:1px solid var(--line)}
+.org-cols{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:18px;border-top:1px solid var(--line);padding-top:12px}
+.org-area{font-weight:600;font-size:14px;margin-bottom:8px;color:var(--ink)}
+.org-kids{margin-left:14px;padding-left:14px;border-left:1px solid var(--line);display:grid;gap:8px;margin-top:8px}
+.oc{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel);text-align:center;position:relative}
+.oc.click{cursor:pointer} .oc.click:hover,.oc.click:focus-visible{border-color:var(--accent);outline:none}
+.oc-root{background:#1f2a5e;color:#fff;border-color:#1f2a5e;width:330px}
+.oc-lead{background:#0f6b55;color:#fff;border-color:#0f6b55}
+.oc-kid{background:color-mix(in srgb,var(--bad) 7%,var(--panel));border-color:color-mix(in srgb,var(--bad) 45%,var(--line))}
+.oc-kid.dashed{border-style:dashed;border-color:var(--good);background:color-mix(in srgb,var(--good) 8%,var(--panel))}
+.oc-role{font-size:12px;opacity:.85} .oc-name{font-weight:600;font-size:14px} .oc-lvl{font-size:12px;opacity:.75}
+.oc-m{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px;font-size:13px;flex-wrap:wrap}
+.oc-l{font-size:11.5px;opacity:.8} .oc-al{font-size:11.5px;border:1px solid currentColor;border-radius:999px;padding:0 6px;opacity:.85}
+.oc-warn{color:var(--warn)}
+.oc-root .oc-st,.oc-lead .oc-st{filter:brightness(1.6)}
+.oc-bar{height:5px;border-radius:3px;background:rgba(127,127,127,.25);margin-top:6px;overflow:hidden}
+.oc-bar div{height:100%;border-radius:3px}
+.oc-none{font-size:12px;opacity:.75;margin-top:6px;font-style:italic}
+.chips.wrap{flex-wrap:wrap;margin-bottom:14px}
+.chip .dot,th .dot{display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:6px;vertical-align:middle}
+.cs-head{border:1px solid var(--line);border-radius:10px;padding:4px 10px;background:var(--bg);margin-bottom:10px}
+.cs-sum{font-size:13px;padding:6px 2px 8px}
+.cs-row{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(160px,1.6fr) 80px minmax(140px,1fr);gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.cs-who b{display:block;font-size:13.5px} .cs-who span{font-size:11.5px;color:var(--muted)}
+.cs-ind{font-size:13.5px} .cs-w{font-size:12px;color:var(--muted);text-align:right}
+.cs-s{display:flex;align-items:center;gap:8px} .cs-s .prog{flex:1;min-width:50px} .cs-s span{font-size:12.5px;font-weight:600;min-width:62px;text-align:right}
+.cs-kids{margin-left:22px;padding-left:12px;border-left:2px solid var(--line)}
+.cs-tree>.cs-row{border-left:3px solid var(--accent);padding-left:10px}
+.mx-wrap{overflow-x:auto}
+.mx-t{min-width:880px} .mx-t th{font-size:11.5px;vertical-align:bottom} .mx-t td{font-size:13px}
+td.mx{background:color-mix(in srgb,var(--accent) calc(var(--a)*70%),transparent);font-family:"IBM Plex Mono",monospace;text-align:center}
+.mx-t th.num{text-align:center}
+td.mx-none{color:var(--warn);font-weight:600;text-align:center}
+.mx-lead td{border-top:2px solid var(--line);font-weight:500}
+.ind-al{font-size:11.5px;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:1px 8px;margin-left:4px;white-space:nowrap}
+.ind-al.none{color:var(--warn);border-color:var(--warn)}
+@media (max-width:760px){ .tiles{grid-template-columns:repeat(2,1fr)} .cs-row{grid-template-columns:1fr 1fr} .cs-w{text-align:left} }
 
 </style>
 </head>
@@ -258,6 +307,7 @@ dialog.img-dlg{width:min(1200px,calc(100vw - 32px))}
       <label>Peso (de 100)<input id="iPeso" type="number" min="0" step="any" required></label>
       <label>Orden<input id="iOrden" type="number" min="1" step="1"></label>
     </div>
+    <label id="iAlWrap">Alineado a (indicador del jefe)<select id="iAl"></select></label>
     <span class="hint err" id="iMsg"></span>
     <div class="btns"><button type="button" data-close>Cancelar</button><button type="submit" class="primary">Guardar</button></div>
   </form>
@@ -287,6 +337,25 @@ dialog.img-dlg{width:min(1200px,calc(100vw - 32px))}
     <div class="tools"><button type="button" id="imgCopy">Copiar</button><button type="button" class="primary" id="imgDown">Descargar PNG</button><button type="button" data-close>Cerrar</button></div></div>
   <div class="img-prev" id="imgPrev"></div>
 </dialog>
+<dialog id="dlgEmp">
+  <form id="eForm" novalidate>
+    <h2 id="eTitle">Persona</h2>
+    <label>Correo<input id="eEmail" type="email" autocomplete="off"></label>
+    <div class="two">
+      <label>Núm. empleado<input id="eNum" required maxlength="20"></label>
+      <label>Nombre<input id="eNombre" maxlength="120"></label>
+    </div>
+    <div class="two">
+      <label>Puesto<input id="ePuesto" maxlength="120"></label>
+      <label>Nivel<input id="eNivel" type="number" min="1" max="30" step="1"></label>
+    </div>
+    <label>Área<input id="eArea" list="areas" maxlength="120"></label>
+    <datalist id="areas"></datalist>
+    <label>Reporta a<select id="eJefe"></select></label>
+    <span class="hint err" id="eMsg"></span>
+    <div class="btns"><button type="button" data-close>Cancelar</button><button type="submit" class="primary">Guardar</button></div>
+  </form>
+</dialog>
 <dialog id="dlgConfirm">
   <h2 id="cfTitle"></h2>
   <p id="cfText" style="margin:0 0 16px;color:var(--muted)"></p>
@@ -296,7 +365,7 @@ dialog.img-dlg{width:min(1200px,calc(100vw - 32px))}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=202610261605"></script>
-<script src="supabase-api.js?v=202610261605"></script>
+<script src="app.js?v=202610271005"></script>
+<script src="supabase-api.js?v=202610271005"></script>
 </body>
 </html>

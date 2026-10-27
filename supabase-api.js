@@ -27,6 +27,11 @@ window.API = {
   },
   async empleados(){ return chk(await sb.from("pr_empleados").select("*").order("nombre")); },
   async guardarEmpleado(e){ chk(await sb.from("pr_empleados").upsert(e, { onConflict: "email" })); },
+  async actualizarEmpleado(old, e){
+    if(e.email !== old && (await sb.from("pr_empleados").select("email").eq("email", e.email)).data?.length) throw new Error("Ese correo ya está registrado.");
+    chkRows(await sb.from("pr_empleados").update(e).eq("email", old).select("email"));
+  },
+  async indicadoresJefe(pid){ return chk(await sb.rpc("pr_indicadores_jefe", { pid })) || []; },
   async crearPronostico({ email, anio, trimestre }){
     return chk(await sb.from("pr_pronosticos").insert({ email, anio, trimestre }).select("id").single()).id;
   },
@@ -36,7 +41,7 @@ window.API = {
     return chk(await sb.rpc("pr_replicar", { src, destinos, periodos, copiar_real }));
   },
   async guardarIndicador(pronostico_id, d){
-    const row = { nombre: d.nombre, medible: d.medible || null, peso: d.peso, orden: d.orden };
+    const row = { nombre: d.nombre, medible: d.medible || null, peso: d.peso, orden: d.orden, alineado_a: d.alineado_a || null };
     if(d.id) chkRows(await sb.from("pr_indicadores").update(row).eq("id", d.id).select("id"));
     else chk(await sb.from("pr_indicadores").insert({ ...row, pronostico_id }));
   },

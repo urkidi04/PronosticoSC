@@ -46,7 +46,7 @@ async function refresh(){
   if(curId && !pron(curId)) curId = null;
   render();
 }
-function render(){ curId ? renderDetail() : renderList(); }
+function render(){ curId ? renderDetail() : view==="dash" ? renderDash() : view==="team" ? renderTeam() : renderList(); }
 
 // ---------- lista
 function renderList(){
@@ -54,7 +54,7 @@ function renderList(){
   let rows = PRONS.filter(p=>(!filt.anio || p.anio==filt.anio) && (!filt.q || p.trimestre==filt.q) &&
     (!filt.txt || (p.email+" "+(empOf(p).nombre||"")+" "+(empOf(p).num_empleado||"")).toLowerCase().includes(filt.txt.toLowerCase())));
   rows.sort((a,b)=> b.anio-a.anio || b.trimestre-a.trimestre || (empOf(a).nombre||a.email).localeCompare(empOf(b).nombre||b.email));
-  $("main").innerHTML = `
+  $("main").innerHTML = navHtml() + `
     <div class="bar">
       <div>
         <h2 class="h">${ME.isAdmin ? "Pronósticos del equipo" : "Mis pronósticos"}</h2>
@@ -81,6 +81,7 @@ function renderList(){
         </tr>`; }).join("")}</tbody></table>`
       : `<div class="empty big-empty">${PRONS.length ? "No hay pronósticos con estos filtros." : ME.isAdmin ? "Aún no hay pronósticos. Crea el primero con «+ Nuevo pronóstico»." : "Todavía no tienes pronósticos asignados."}</div>`}
     </section>`;
+  bindNav();
   if($("btnNew")) $("btnNew").onclick = ()=>openPron(null);
   $("fAnio").onchange = e=>{ filt.anio = e.target.value; renderList(); };
   document.querySelectorAll("[data-q]").forEach(b=>b.onclick=()=>{ filt.q = Number(b.dataset.q); renderList(); });
@@ -96,7 +97,7 @@ function renderDetail(){
   const p = pron(curId), e = empOf(p), sc = score(p), ED = canEdit(p);
   const sumInd = p.indicadores.reduce((a,i)=>a+Number(i.peso),0);
   $("main").innerHTML = `
-    <button class="back" id="btnBack">← ${ME.isAdmin?"Pronósticos del equipo":"Mis pronósticos"}</button>
+    <button class="back" id="btnBack">← ${view==="dash"?"Estructura y alineación":ME.isAdmin?"Pronósticos del equipo":"Mis pronósticos"}</button>
     <section class="card head-card">
       <div>
         <div class="per big-per">${Q(p.trimestre)} ${p.anio}</div>
@@ -162,6 +163,18 @@ function renderDetail(){
     };
   });
   compute();
+  fillAlign(p);
+}
+let jefeInds = [];
+async function fillAlign(p){
+  try{ jefeInds = await API.indicadoresJefe(p.id); }catch(e){ jefeInds = []; }
+  if(!pron(curId) || curId !== p.id) return;
+  const hasJefe = jefeInds.length > 0;
+  document.querySelectorAll("[data-al]").forEach(el=>{
+    const j = jefeInds.find(x=>String(x.id)===el.dataset.al);
+    if(j){ el.textContent = "↑ " + j.nombre; el.title = "Alineado al indicador de su jefe"; el.className = "ind-al"; el.hidden = false; }
+    else if(hasJefe){ el.textContent = "Sin alinear"; el.title = "No contribuye a un indicador de su jefe"; el.className = "ind-al none"; el.hidden = false; }
+  });
 }
 const strip = o => { const r = {...o}; delete r.tareas; return r; };
 function findTask(id){ for(const d of pron(curId).indicadores) for(const t of d.tareas) if(t.id===id) return t; }
@@ -172,7 +185,7 @@ function indHtml(p, ind, i){
   return `<section class="card ind">
     <div class="ind-head">
       <div class="ind-title"><span class="dot" style="background:var(${color(i)})"></span>
-        <h3>${esc(ind.nombre)}</h3><span class="tag">Peso ${nf.format(ind.peso)}</span>
+        <h3>${esc(ind.nombre)}</h3><span class="tag">Peso ${nf.format(ind.peso)}</span><span class="ind-al" data-al="${ind.alineado_a||""}" hidden></span>
         ${ED?`<button class="ib" data-edi="${ind.id}" title="Editar indicador" aria-label="Editar indicador">✎</button><button class="ib del" data-deli="${ind.id}" title="Eliminar indicador" aria-label="Eliminar indicador">🗑</button>`:""}</div>
       <div class="ind-score"><b class="mono" id="is-${ind.id}"></b><span id="ip-${ind.id}"></span></div>
     </div>
@@ -339,11 +352,13 @@ function openInd(id){
   $("iNombre").value = d ? d.nombre : ""; $("iMedible").value = d ? (d.medible||"") : "";
   $("iPeso").value = d ? Number(d.peso) : Math.max(0, Math.round((100 - p.indicadores.reduce((a,x)=>a+Number(x.peso),0))*100)/100);
   $("iOrden").value = d ? d.orden : p.indicadores.reduce((a,x)=>Math.max(a,x.orden),0)+1;
+  $("iAl").innerHTML = `<option value="">Sin alinear</option>` + jefeInds.map(j=>`<option value="${j.id}">${esc(j.nombre)} (peso ${nf.format(j.peso)})</option>`).join("");
+  $("iAl").value = d && d.alineado_a ? d.alineado_a : ""; $("iAlWrap").hidden = !jefeInds.length;
   $("iMsg").textContent = ""; $("dlgInd").showModal(); $("iNombre").focus();
 }
 $("iForm").addEventListener("submit", async ev=>{
   ev.preventDefault();
-  const row = { id: editInd||undefined, nombre: $("iNombre").value.trim(), medible: $("iMedible").value.trim(), peso: Number($("iPeso").value), orden: Number($("iOrden").value)||99 };
+  const row = { id: editInd||undefined, nombre: $("iNombre").value.trim(), medible: $("iMedible").value.trim(), peso: Number($("iPeso").value), orden: Number($("iOrden").value)||99, alineado_a: Number($("iAl").value)||null };
   if(!row.nombre){ $("iMsg").textContent = "Escribe el nombre."; return; }
   if(!(row.peso>=0)){ $("iMsg").textContent = "Peso no válido."; return; }
   try{ await API.guardarIndicador(curId, row); $("dlgInd").close(); toast(editInd?"Indicador actualizado":"Indicador agregado"); await refresh(); }
@@ -508,6 +523,227 @@ $("imgCopy").onclick = async ()=>{
   catch(e){ toast("Tu navegador no permite copiar imágenes; usa Descargar"); }
 };
 
+// ---------- tablero: estructura y alineación (administrador)
+let view = "list", dashPer = null, dashInd = null, dashSel = null;
+const perKey = p => p.anio*10 + p.trimestre;
+const perLbl = k => `${Q(k%10)} ${Math.floor(k/10)}`;
+const stLbl = v => v>=95 ? ["▲","En meta"] : v>=80 ? ["●","En riesgo"] : ["▼","Bajo"];
+function navHtml(){
+  return ME.isAdmin ? `<div class="tabs" role="tablist">
+    <button role="tab" class="tab ${view==="list"?"on":""}" data-view="list" aria-selected="${view==="list"}">Pronósticos</button>
+    <button role="tab" class="tab ${view==="dash"?"on":""}" data-view="dash" aria-selected="${view==="dash"}">Estructura y alineación</button>
+    <button role="tab" class="tab ${view==="team"?"on":""}" data-view="team" aria-selected="${view==="team"}">Equipo</button></div>` : "";
+}
+function bindNav(){ document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{ view=b.dataset.view; curId=null; render(); }); }
+
+function orgModel(k){
+  const emps = EMPS.slice();
+  const byEmail = Object.fromEntries(emps.map(e=>[e.email,e]));
+  const prons = PRONS.filter(p=>perKey(p)===k);
+  const pOf = Object.fromEntries(prons.map(p=>[p.email,p]));
+  const indById = {}; prons.forEach(p=>p.indicadores.forEach((i,ix)=>{ indById[i.id] = { ind:i, p, ix }; }));
+  const root = emps.find(e=>!e.jefe && pOf[e.email]) || emps.find(e=>!e.jefe);
+  const kids = em => emps.filter(e=>e.jefe===em).sort((a,b)=>(b.nivel||0)-(a.nivel||0) || (a.nombre||"").localeCompare(b.nombre||""));
+  // raíz de cascada: sube por alineado_a hasta un indicador sin alinear
+  const rootOf = id => { let x = indById[id], g = 0; while(x && x.ind.alineado_a && indById[x.ind.alineado_a] && g++<10) x = indById[x.ind.alineado_a]; return x; };
+  const person = e => {
+    const p = pOf[e.email]; if(!p) return { e, p:null };
+    const sc = score(p), tot = p.indicadores.reduce((a,i)=>a+Number(i.peso),0)||1;
+    const alPeso = p.indicadores.filter(i=>i.alineado_a && indById[i.alineado_a]).reduce((a,i)=>a+Number(i.peso),0);
+    const badW = p.indicadores.some(i=>i.tareas.length && Math.abs(i.tareas.reduce((a,t)=>a+Number(t.peso),0)-100)>0.01) || Math.abs(tot-100)>0.01;
+    return { e, p, sc, alin: e.jefe ? alPeso/tot*100 : null, badW };
+  };
+  return { emps, byEmail, prons, pOf, indById, root, kids, rootOf, person };
+}
+
+function renderDash(){
+  const keys = [...new Set(PRONS.map(perKey))].sort((a,b)=>b-a);
+  if(!keys.length){ $("main").innerHTML = navHtml() + `<div class="empty big-empty">Aún no hay pronósticos.</div>`; bindNav(); return; }
+  if(!dashPer || !keys.includes(dashPer)) dashPer = keys[0];
+  const M = orgModel(dashPer), rootP = M.root && M.pOf[M.root.email];
+  if(rootP && (!dashInd || !rootP.indicadores.some(i=>i.id===dashInd))){
+    // por defecto: el indicador del gerente que más baja al equipo
+    const n = id => { let c = 0; const w = x => Object.values(M.indById).filter(y=>y.ind.alineado_a===x).forEach(y=>{ c++; w(y.ind.id); }); w(id); return c; };
+    const best = rootP.indicadores.slice().sort((a,b)=>n(b.id)-n(a.id))[0]; dashInd = best && best.id;
+  }
+  const people = M.emps.map(M.person), withP = people.filter(x=>x.p);
+  const conCap = withP.filter(x=>x.sc.cap>0), avg = conCap.length ? conCap.reduce((a,x)=>a+x.sc.total,0)/conCap.length : null;
+  const nonRoot = withP.filter(x=>x.alin!==null), alinAvg = nonRoot.length ? nonRoot.reduce((a,x)=>a+x.alin,0)/nonRoot.length : 0;
+  const tasks = withP.reduce((a,x)=>[a[0]+x.sc.cap, a[1]+x.sc.n],[0,0]);
+  const bad = withP.filter(x=>x.badW).length;
+  const tile = (lbl, val, sub, cls="") => `<div class="tile ${cls}"><span>${lbl}</span><b class="mono">${val}</b><small>${sub}</small></div>`;
+  $("main").innerHTML = navHtml() + `
+    <div class="bar">
+      <div><h2 class="h">Estructura y alineación</h2><div class="sub">Cómo bajan tus indicadores a líderes y consultores</div></div>
+      <select id="dPer" aria-label="Periodo">${keys.map(k=>`<option value="${k}" ${k===dashPer?"selected":""}>${perLbl(k)}</option>`).join("")}</select>
+    </div>
+    <div class="tiles">
+      ${tile("Cumplimiento promedio", avg===null ? "—" : nf.format(avg)+"%", avg===null ? "aún sin reales capturados" : `de ${conCap.length} con captura`)}
+      ${tile("Personas con pronóstico", `${withP.length}/${M.emps.length}`, M.emps.length-withP.length ? `${M.emps.length-withP.length} sin pronóstico` : "Todo el equipo")}
+      ${tile("Alineación promedio", nf.format(alinAvg)+"%", "peso alineado a su jefe")}
+      ${tile("Captura de reales", tasks[1] ? nf.format(tasks[0]/tasks[1]*100)+"%" : "—", `${tasks[0]} de ${tasks[1]} tareas`)}
+      ${tile("Pesos por validar", bad, bad ? "pronósticos que no suman 100" : "Todo suma 100", bad?"t-bad":"")}
+    </div>
+
+    <section class="card org-card">
+      <h2>Estructura · ${perLbl(dashPer)}</h2>
+      <div class="legend-st"><span>▲ En meta ≥95%</span><span>● En riesgo 80–95%</span><span>▼ Bajo &lt;80%</span><span>↑ % del peso alineado a su jefe</span></div>
+      ${M.root ? orgHtml(M) : `<div class="empty">Sin estructura registrada.</div>`}
+    </section>
+
+    ${rootP ? `<section class="card">
+      <h2>Cascada de indicadores</h2>
+      <div class="chips wrap" role="group" aria-label="Indicador del gerente">${rootP.indicadores.map((i,ix)=>`<button class="chip ${i.id===dashInd?"on":""}" data-ci="${i.id}"><i class="dot" style="background:var(${color(ix)})"></i>${esc(i.nombre)} · ${nf.format(i.peso)}</button>`).join("")}</div>
+      <div id="cascade">${cascadeHtml(M, dashInd)}</div>
+    </section>
+
+    <section class="card">
+      <h2>Matriz de alineación</h2>
+      <p class="hint" style="margin:-4px 0 12px">Peso de cada persona (de 100) que, directa o indirectamente, contribuye a cada indicador del gerente. Entre más intenso, más peso.</p>
+      <div class="mx-wrap">${matrixHtml(M, rootP)}</div>
+    </section>` : ""}`;
+  bindNav();
+  $("dPer").onchange = e=>{ dashPer = Number(e.target.value); renderDash(); };
+  document.querySelectorAll("[data-ci]").forEach(b=>b.onclick=()=>{ dashInd = Number(b.dataset.ci); renderDash(); });
+  document.querySelectorAll("[data-op]").forEach(c=>c.onclick=()=>{ const p = M.pOf[c.dataset.op]; if(p){ curId = p.id; window.scrollTo(0,0); render(); } });
+}
+
+function cardHtml(M, e, kind){
+  const x = M.person(e), dashed = /proy\./i.test(e.puesto||"");
+  let m = `<div class="oc-none">Sin pronóstico ${perLbl(dashPer)}</div>`;
+  if(x.p){
+    const v = x.sc.total, [ic, lb] = stLbl(v), col = x.sc.cap ? st2(v) : "var(--muted)";
+    m = `<div class="oc-m"><span class="oc-st" style="color:${col}">${x.sc.cap?ic:"○"}</span><b class="mono">${nf.format(v)}%</b><span class="oc-l">${x.sc.cap?lb:"sin captura"}</span>
+      ${x.alin!==null?`<span class="oc-al" title="Peso alineado a su jefe">↑ ${nf.format(x.alin)}%</span>`:""}${x.badW?`<span class="oc-warn" title="Pesos que no suman 100">⚠</span>`:""}</div>
+      <div class="oc-bar"><div style="width:${v}%;background:${col}"></div></div>`;
+  }
+  return `<div class="oc ${kind} ${dashed?"dashed":""} ${x.p?"click":""}" ${x.p?`data-op="${esc(e.email)}" tabindex="0" role="button" aria-label="Abrir pronóstico de ${esc(e.nombre)}"`:""}>
+    <div class="oc-role">${esc(e.puesto||"")}</div>
+    <div class="oc-name">${esc(e.nombre||e.email)} · <span class="mono">${esc(e.num_empleado||"")}</span></div>
+    <div class="oc-lvl">${e.nivel?`Nivel ${e.nivel}`:""}</div>${m}</div>`;
+}
+const st2 = v => v>=95 ? "var(--good)" : v>=80 ? "var(--warn)" : "var(--bad)";
+function orgHtml(M){
+  const leads = M.kids(M.root.email);
+  return `<div class="org">
+    <div class="org-top">${cardHtml(M, M.root, "oc-root")}</div>
+    <div class="org-cols" style="--n:${Math.max(1,leads.length)}">${leads.map(l=>`
+      <div class="org-col">
+        <div class="org-area">${esc(l.area||"")}</div>
+        ${cardHtml(M, l, "oc-lead")}
+        <div class="org-kids">${M.kids(l.email).map(k=>cardHtml(M, k, "oc-kid")).join("")}</div>
+      </div>`).join("")}</div></div>`;
+}
+
+function cascadeHtml(M, indId){
+  const node = M.indById[indId]; if(!node) return "";
+  const childrenOf = id => Object.values(M.indById).filter(x=>x.ind.alineado_a===id);
+  const sOf = x => score(x.p).inds[x.ix].s;
+  const all = []; const walk = id => childrenOf(id).forEach(c=>{ all.push(c); walk(c.ind.id); }); walk(indId);
+  const capd = all.filter(c=>c.ind.tareas.some(t=>pctOf(t)!==null));
+  const roll = capd.length ? capd.reduce((a,c)=>a+sOf(c),0)/capd.length : null;
+  const people = new Set(all.map(c=>c.p.email));
+  const row = (x, lvl) => {
+    const e = M.byEmail[x.p.email] || {}, s = sOf(x), cap = x.ind.tareas.some(t=>pctOf(t)!==null);
+    const [ic] = stLbl(s);
+    return `<div class="cs-row lvl${lvl}">
+      <div class="cs-who"><b>${esc(e.nombre||x.p.email)}</b><span>${esc(e.puesto||"")}</span></div>
+      <div class="cs-ind">${esc(x.ind.nombre)}</div>
+      <div class="cs-w mono" title="Peso dentro del scorecard de la persona">peso ${nf.format(x.ind.peso)}</div>
+      <div class="cs-s"><div class="prog"><div style="width:${s}%;background:${cap?st2(s):"var(--track)"}"></div></div><span class="mono" style="color:${cap?st2(s):"var(--muted)"}">${cap?ic+" ":""}${nf.format(s)}%</span></div>
+    </div>`;
+  };
+  const tree = (id, lvl) => childrenOf(id).map(c=>row(c,lvl) + `<div class="cs-kids">${tree(c.ind.id, lvl+1)}</div>`).join("");
+  const kidsHtml = tree(indId, 1);
+  return `<div class="cs-head">
+      ${row(node, 0)}
+      <div class="cs-sum">${all.length ? `Baja a <b>${people.size}</b> persona${people.size===1?"":"s"} en <b>${all.length}</b> indicador${all.length===1?"":"es"} · ${roll===null ? "aún sin reales capturados" : `cumplimiento promedio de la cascada <b class="mono" style="color:${st2(roll)}">${stLbl(roll)[0]} ${nf.format(roll)}%</b>`}` : `<span class="hint err">⚠ Ningún indicador del equipo está alineado a este.</span>`}</div>
+    </div>
+    <div class="cs-tree">${kidsHtml}</div>`;
+}
+
+function matrixHtml(M, rootP){
+  const cols = rootP.indicadores;
+  const order = []; const visit = (em, d) => { const e = M.byEmail[em]; if(!e) return; if(em!==M.root.email) order.push([e,d]); M.kids(em).forEach(k=>visit(k.email, d+1)); };
+  visit(M.root.email, 0);
+  const head = `<tr><th>Persona</th>${cols.map((c,ix)=>`<th class="num"><i class="dot" style="background:var(${color(ix)})"></i>${esc(c.nombre)}</th>`).join("")}<th class="num">Sin alinear</th><th class="num">Cumpl.</th></tr>`;
+  const body = order.map(([e,d])=>{
+    const p = M.pOf[e.email];
+    if(!p) return `<tr class="${d===1?"mx-lead":""}"><td style="padding-left:${8+(d-1)*16}px">${esc(e.nombre)}</td><td colspan="${cols.length+2}" class="hint">Sin pronóstico</td></tr>`;
+    const w = Object.fromEntries(cols.map(c=>[c.id,0])); let none = 0;
+    p.indicadores.forEach(i=>{ const r = i.alineado_a ? M.rootOf(i.id) : null; (r && r.p.email===M.root.email && w[r.ind.id]!==undefined) ? w[r.ind.id]+=Number(i.peso) : none+=Number(i.peso); });
+    const sc = score(p);
+    const cell = v => `<td class="num mx" style="--a:${Math.min(1,v/100)}" title="${nf.format(v)} de 100">${v?nf.format(v):"·"}</td>`;
+    return `<tr class="${d===1?"mx-lead":""}"><td style="padding-left:${8+(d-1)*16}px"><b>${esc(e.nombre)}</b> <span class="by" style="display:inline">${esc(e.puesto||"")}</span></td>
+      ${cols.map(c=>cell(w[c.id])).join("")}
+      <td class="num ${none?"mx-none":""}" title="Peso no alineado">${none?nf.format(none):"·"}</td>
+      <td class="num mono" style="color:${sc.cap?st2(sc.total):"var(--muted)"}">${nf.format(sc.total)}%</td></tr>`;
+  }).join("");
+  return `<table class="mx-t"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+}
+
+// ---------- equipo (administrador): estructura y correos
+const pend = em => /^pendiente\./i.test(em||"");
+function treeOrder(){
+  const out = [], seen = new Set();
+  const kids = em => EMPS.filter(e=>e.jefe===em).sort((a,b)=>(b.nivel||0)-(a.nivel||0)||(a.nombre||"").localeCompare(b.nombre||""));
+  const visit = (e,d) => { if(seen.has(e.email)) return; seen.add(e.email); out.push([e,d]); kids(e.email).forEach(k=>visit(k,d+1)); };
+  EMPS.filter(e=>!e.jefe || !EMPS.some(x=>x.email===e.jefe)).sort((a,b)=>(b.nivel||0)-(a.nivel||0)).forEach(e=>visit(e,0));
+  return out;
+}
+function renderTeam(){
+  const rows = treeOrder(), np = rows.filter(([e])=>pend(e.email)).length;
+  $("main").innerHTML = navHtml() + `
+    <div class="bar">
+      <div><h2 class="h">Equipo</h2><div class="sub">${rows.length} personas${np?` · <span style="color:var(--warn)">${np} con correo pendiente</span>`:""}</div></div>
+      <button class="primary" id="btnNewEmp">+ Agregar persona</button>
+    </div>
+    ${np?`<p class="setup" style="margin:0 0 14px">Captura el correo real de cada persona para que pueda entrar a ver y capturar su pronóstico. Al cambiarlo, sus pronósticos se conservan.</p>`:""}
+    <section class="card flush"><table class="list">
+      <thead><tr><th>Nombre</th><th>Núm. emp.</th><th class="hide-sm">Puesto</th><th class="hide-sm">Nivel</th><th>Correo</th><th class="hide-sm">Pronósticos</th><th></th></tr></thead>
+      <tbody>${rows.map(([e,d])=>`<tr>
+        <td style="padding-left:${8+d*18}px"><b>${esc(e.nombre||"—")}</b>${e.area&&d===1?`<div class="by">${esc(e.area)}</div>`:""}</td>
+        <td class="mono">${esc(e.num_empleado)}</td>
+        <td class="hide-sm">${esc(e.puesto||"")}</td>
+        <td class="hide-sm mono">${e.nivel??""}</td>
+        <td>${pend(e.email)?`<span class="ind-al none">Correo pendiente</span>`:`<span class="by" style="display:inline">${esc(e.email)}</span>`}</td>
+        <td class="hide-sm mono">${PRONS.filter(p=>p.email===e.email).length}</td>
+        <td class="act"><button class="ib" data-emp="${esc(e.email)}" title="Editar" aria-label="Editar ${esc(e.nombre||"")}">✎</button></td>
+      </tr>`).join("")}</tbody></table></section>`;
+  bindNav();
+  $("btnNewEmp").onclick = ()=>openEmp(null);
+  document.querySelectorAll("[data-emp]").forEach(b=>b.onclick=()=>openEmp(b.dataset.emp));
+}
+let editEmp = null;
+function openEmp(email){
+  editEmp = email; const e = email ? EMPS.find(x=>x.email===email) : {};
+  $("eTitle").textContent = email ? "Editar persona" : "Agregar persona";
+  $("eEmail").value = email && !pend(email) ? email : ""; $("eEmail").placeholder = pend(email) ? "Correo pendiente — escríbelo aquí" : "nombre@bafar.com.mx";
+  $("eNum").value = e.num_empleado || ""; $("eNombre").value = e.nombre || ""; $("ePuesto").value = e.puesto || "";
+  $("eNivel").value = e.nivel ?? ""; $("eArea").value = e.area || "";
+  $("areas").innerHTML = [...new Set(EMPS.map(x=>x.area).filter(Boolean))].map(a=>`<option value="${esc(a)}">`).join("");
+  // no puede reportar a sí mismo ni a alguien de su propio equipo
+  const below = new Set(); const walk = em => EMPS.filter(x=>x.jefe===em).forEach(x=>{ below.add(x.email); walk(x.email); }); if(email) walk(email);
+  $("eJefe").innerHTML = `<option value="">— Nadie (nivel superior) —</option>` + EMPS.filter(x=>x.email!==email && !below.has(x.email))
+    .sort((a,b)=>(b.nivel||0)-(a.nivel||0)).map(x=>`<option value="${esc(x.email)}">${esc(x.nombre||x.email)} · ${esc(x.puesto||"")}</option>`).join("");
+  $("eJefe").value = e.jefe || "";
+  $("eMsg").textContent = ""; $("dlgEmp").showModal(); (email ? $("eEmail") : $("eNum")).focus();
+}
+$("eForm").addEventListener("submit", async ev=>{
+  ev.preventDefault();
+  const num = $("eNum").value.trim();
+  let email = $("eEmail").value.trim().toLowerCase();
+  if(!email) email = editEmp && pend(editEmp) ? editEmp : (num ? `pendiente.${num.toLowerCase().replace(/[^a-z0-9-]/g,"")}@bafar.com.mx` : "");
+  const row = { email, num_empleado: num, nombre: $("eNombre").value.trim(), puesto: $("ePuesto").value.trim() || null,
+    nivel: $("eNivel").value === "" ? null : Number($("eNivel").value), area: $("eArea").value.trim() || null, jefe: $("eJefe").value || null };
+  if(!num){ $("eMsg").textContent = "Escribe el número de empleado."; return; }
+  if(!/^[^@\s]+@bafar\.com\.mx$/.test(email)){ $("eMsg").textContent = "Usa un correo @bafar.com.mx (o déjalo vacío si aún no lo tienes)."; return; }
+  try{
+    if(editEmp) await API.actualizarEmpleado(editEmp, row); else await API.guardarEmpleado(row);
+    $("dlgEmp").close(); toast(editEmp ? "Persona actualizada" : "Persona agregada"); await refresh();
+  } catch(e){ $("eMsg").textContent = e.message; }
+});
+
 // ---------- tema
 $("theme").onclick = ()=>{
   const r = document.documentElement;
@@ -520,7 +756,7 @@ try{ const t = localStorage.getItem("pronosticoSC_theme"); if(t) document.docume
 // ---------- arranque (la capa API decide si hay sesión)
 window.App = {
   async start(me){
-    ME = me; curId = null; filt.anio = ""; filt.q = 0; filt.txt = "";
+    ME = me; curId = null; view = "list"; filt.anio = ""; filt.q = 0; filt.txt = "";
     $("whoEmail").textContent = me.email; $("roleBadge").textContent = me.isAdmin ? "Administrador" : "Colaborador";
     $("who").hidden = false; $("app").hidden = false;
     await refresh();
