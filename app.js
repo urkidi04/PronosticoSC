@@ -542,8 +542,9 @@ function orgModel(k){
   const prons = PRONS.filter(p=>perKey(p)===k);
   const pOf = Object.fromEntries(prons.map(p=>[p.email,p]));
   const indById = {}; prons.forEach(p=>p.indicadores.forEach((i,ix)=>{ indById[i.id] = { ind:i, p, ix }; }));
-  const root = emps.find(e=>!e.jefe && pOf[e.email]) || emps.find(e=>!e.jefe);
   const kids = em => emps.filter(e=>e.jefe===em).sort((a,b)=>(b.nivel||0)-(a.nivel||0) || (a.nombre||"").localeCompare(b.nombre||""));
+  const below = em => kids(em).flatMap(k=>[k, ...below(k.email)]);
+  const root = emps.filter(e=>!e.jefe).sort((a,b)=>below(b.email).length-below(a.email).length || (pOf[b.email]?1:0)-(pOf[a.email]?1:0))[0];
   // raíz de cascada: sube por alineado_a hasta un indicador sin alinear
   const rootOf = id => { let x = indById[id], g = 0; while(x && x.ind.alineado_a && indById[x.ind.alineado_a] && g++<10) x = indById[x.ind.alineado_a]; return x; };
   const person = e => {
@@ -553,7 +554,8 @@ function orgModel(k){
     const badW = p.indicadores.some(i=>i.tareas.length && Math.abs(i.tareas.reduce((a,t)=>a+Number(t.peso),0)-100)>0.01) || Math.abs(tot-100)>0.01;
     return { e, p, sc, alin: e.jefe ? alPeso/tot*100 : null, badW };
   };
-  return { emps, byEmail, prons, pOf, indById, root, kids, rootOf, person };
+  const team = root ? [root, ...below(root.email)] : [];
+  return { emps, byEmail, prons, pOf, indById, root, kids, rootOf, person, team };
 }
 
 function renderDash(){
@@ -566,7 +568,7 @@ function renderDash(){
     const n = id => { let c = 0; const w = x => Object.values(M.indById).filter(y=>y.ind.alineado_a===x).forEach(y=>{ c++; w(y.ind.id); }); w(id); return c; };
     const best = rootP.indicadores.slice().sort((a,b)=>n(b.id)-n(a.id))[0]; dashInd = best && best.id;
   }
-  const people = M.emps.map(M.person), withP = people.filter(x=>x.p);
+  const people = M.team.map(M.person), withP = people.filter(x=>x.p);
   const conCap = withP.filter(x=>x.sc.cap>0), avg = conCap.length ? conCap.reduce((a,x)=>a+x.sc.total,0)/conCap.length : null;
   const nonRoot = withP.filter(x=>x.alin!==null), alinAvg = nonRoot.length ? nonRoot.reduce((a,x)=>a+x.alin,0)/nonRoot.length : 0;
   const tasks = withP.reduce((a,x)=>[a[0]+x.sc.cap, a[1]+x.sc.n],[0,0]);
@@ -579,11 +581,13 @@ function renderDash(){
     </div>
     <div class="tiles">
       ${tile("Cumplimiento promedio", avg===null ? "—" : nf.format(avg)+"%", avg===null ? "aún sin reales capturados" : `de ${conCap.length} con captura`)}
-      ${tile("Personas con pronóstico", `${withP.length}/${M.emps.length}`, M.emps.length-withP.length ? `${M.emps.length-withP.length} sin pronóstico` : "Todo el equipo")}
+      ${tile("Personas con pronóstico", `${withP.length}/${M.team.length}`, M.team.length-withP.length ? `${M.team.length-withP.length} sin pronóstico` : "Todo el equipo")}
       ${tile("Alineación promedio", nf.format(alinAvg)+"%", "peso alineado a su jefe")}
       ${tile("Captura de reales", tasks[1] ? nf.format(tasks[0]/tasks[1]*100)+"%" : "—", `${tasks[0]} de ${tasks[1]} tareas`)}
       ${tile("Pesos por validar", bad, bad ? "pronósticos que no suman 100" : "Todo suma 100", bad?"t-bad":"")}
     </div>
+
+    ${M.root ? evalHtml(M) : ""}
 
     <section class="card org-card">
       <h2>Estructura · ${perLbl(dashPer)}</h2>
@@ -700,11 +704,12 @@ function renderTeam(){
     </div>
     ${np?`<p class="setup" style="margin:0 0 14px">Captura el correo real de cada persona para que pueda entrar a ver y capturar su pronóstico. Al cambiarlo, sus pronósticos se conservan.</p>`:""}
     <section class="card flush"><table class="list">
-      <thead><tr><th>Nombre</th><th>Núm. emp.</th><th class="hide-sm">Puesto</th><th class="hide-sm">Nivel</th><th>Correo</th><th class="hide-sm">Pronósticos</th><th></th></tr></thead>
+      <thead><tr><th>Nombre</th><th>Núm. emp.</th><th class="hide-sm">Posición</th><th class="hide-sm">Puesto</th><th class="hide-sm">Nivel</th><th>Correo</th><th class="hide-sm">Pronósticos</th><th></th></tr></thead>
       <tbody>${rows.map(([e,d])=>`<tr>
         <td style="padding-left:${8+d*18}px"><b>${esc(e.nombre||"—")}</b>${e.area&&d===1?`<div class="by">${esc(e.area)}</div>`:""}</td>
         <td class="mono">${esc(e.num_empleado)}</td>
-        <td class="hide-sm">${esc(e.puesto||"")}</td>
+        <td class="mono hide-sm">${esc(e.posicion||"")}</td>
+        <td class="hide-sm">${esc(e.puesto||"")}${!e.jefe && d===0 && rows.length>1 && EMPS.some(x=>x.jefe===e.email)===false ? ` <span class="ind-al none">Sin jefe asignado</span>` : ""}</td>
         <td class="hide-sm mono">${e.nivel??""}</td>
         <td>${pend(e.email)?`<span class="ind-al none">Correo pendiente</span>`:`<span class="by" style="display:inline">${esc(e.email)}</span>`}</td>
         <td class="hide-sm mono">${PRONS.filter(p=>p.email===e.email).length}</td>
@@ -720,7 +725,7 @@ function openEmp(email){
   $("eTitle").textContent = email ? "Editar persona" : "Agregar persona";
   $("eEmail").value = email && !pend(email) ? email : ""; $("eEmail").placeholder = pend(email) ? "Correo pendiente — escríbelo aquí" : "nombre@bafar.com.mx";
   $("eNum").value = e.num_empleado || ""; $("eNombre").value = e.nombre || ""; $("ePuesto").value = e.puesto || "";
-  $("eNivel").value = e.nivel ?? ""; $("eArea").value = e.area || "";
+  $("eNivel").value = e.nivel ?? ""; $("eArea").value = e.area || ""; $("ePos").value = e.posicion || "";
   $("areas").innerHTML = [...new Set(EMPS.map(x=>x.area).filter(Boolean))].map(a=>`<option value="${esc(a)}">`).join("");
   // no puede reportar a sí mismo ni a alguien de su propio equipo
   const below = new Set(); const walk = em => EMPS.filter(x=>x.jefe===em).forEach(x=>{ below.add(x.email); walk(x.email); }); if(email) walk(email);
@@ -735,7 +740,7 @@ $("eForm").addEventListener("submit", async ev=>{
   let email = $("eEmail").value.trim().toLowerCase();
   if(!email) email = editEmp && pend(editEmp) ? editEmp : (num ? `pendiente.${num.toLowerCase().replace(/[^a-z0-9-]/g,"")}@bafar.com.mx` : "");
   const row = { email, num_empleado: num, nombre: $("eNombre").value.trim(), puesto: $("ePuesto").value.trim() || null,
-    nivel: $("eNivel").value === "" ? null : Number($("eNivel").value), area: $("eArea").value.trim() || null, jefe: $("eJefe").value || null };
+    nivel: $("eNivel").value === "" ? null : Number($("eNivel").value), area: $("eArea").value.trim() || null, jefe: $("eJefe").value || null, posicion: $("ePos").value.trim() || null };
   if(!num){ $("eMsg").textContent = "Escribe el número de empleado."; return; }
   if(!/^[^@\s]+@bafar\.com\.mx$/.test(email)){ $("eMsg").textContent = "Usa un correo @bafar.com.mx (o déjalo vacío si aún no lo tienes)."; return; }
   try{
@@ -743,6 +748,73 @@ $("eForm").addEventListener("submit", async ev=>{
     $("dlgEmp").close(); toast(editEmp ? "Persona actualizada" : "Persona agregada"); await refresh();
   } catch(e){ $("eMsg").textContent = e.message; }
 });
+
+// ---------- evaluación de alineación
+function evalModel(M){
+  const rootEm = M.root.email, rootP = M.pOf[rootEm];
+  const chain = id => { // estado de un indicador: llega a un indicador del gerente, se queda a medio camino, o sin alinear
+    const x = M.indById[id]; if(!x || !x.ind.alineado_a) return "none";
+    const r = M.rootOf(id); return r && r.p.email === rootEm && r.ind.id !== id ? "ok" : "broken";
+  };
+  const people = M.team.filter(e=>e.email!==rootEm).map(e=>{
+    const p = M.pOf[e.email];
+    if(!p) return { e, p:null, st:"nop" };
+    const tot = p.indicadores.reduce((a,i)=>a+Number(i.peso),0) || 1;
+    const items = p.indicadores.map(i=>({ i, st: chain(i.id) }));
+    const ok = items.filter(x=>x.st==="ok").reduce((a,x)=>a+Number(x.i.peso),0);
+    const pct = ok/tot*100;
+    return { e, p, items, pct, st: pct>=99.99 ? "full" : pct>=50 ? "part" : "low" };
+  });
+  const cov = rootP ? rootP.indicadores.map((ri,ix)=>{
+    const desc = []; const w = id => Object.values(M.indById).filter(y=>y.ind.alineado_a===id).forEach(y=>{ desc.push(y); w(y.ind.id); }); w(ri.id);
+    return { ri, ix, n: new Set(desc.map(d=>d.p.email)).size, k: desc.length };
+  }) : [];
+  const unal = people.filter(x=>x.p).flatMap(x=>x.items.filter(y=>y.st!=="ok").map(y=>({ ...y, e:x.e, p:x.p })));
+  const withP = people.filter(x=>x.p);
+  const avg = withP.length ? withP.reduce((a,x)=>a+x.pct,0)/withP.length : 0;
+  return { people, cov, unal, avg, withP };
+}
+const ALST = { full:["✓","Alineado","var(--good)"], part:["●","Parcial","var(--warn)"], low:["✗","Bajo","var(--bad)"], nop:["○","Sin pronóstico","var(--muted)"] };
+function evalHtml(M){
+  const E = evalModel(M);
+  const gaps = E.cov.filter(c=>!c.n), nFull = E.people.filter(x=>x.st==="full").length, nNop = E.people.filter(x=>x.st==="nop").length;
+  const unalPts = E.unal.reduce((a,x)=>a+Number(x.i.peso),0);
+  const sm = (v, lbl, bad) => `<div class="ev-k ${bad?"bad":""}"><b class="mono">${v}</b><span>${lbl}</span></div>`;
+  return `<section class="card ev">
+    <h2>Evaluación de alineación · ${perLbl(dashPer)}</h2>
+    <div class="ev-ks">
+      ${sm(nf.format(E.avg)+"%", "alineación promedio del equipo (peso que llega a tus indicadores)", E.avg<80)}
+      ${sm(`${E.cov.length-gaps.length}/${E.cov.length}`, "de tus indicadores tienen cascada", gaps.length)}
+      ${sm(`${nFull}/${E.people.length}`, "personas 100% alineadas", nFull<E.people.length)}
+      ${sm(E.unal.length, `indicadores que no llegan a los tuyos${E.unal.length?` (${nf.format(unalPts)} pts de peso)`:""}`, E.unal.length)}
+      ${sm(nNop, "personas sin pronóstico", nNop)}
+    </div>
+    <div class="ev-grid">
+      <div>
+        <h3>Cobertura de tus indicadores</h3>
+        ${E.cov.map(c=>`<div class="ev-row"><span><i class="dot" style="background:var(${color(c.ix)})"></i>${esc(c.ri.nombre)}</span>
+          ${c.n?`<span class="ok">✓ ${c.n} persona${c.n===1?"":"s"}</span>`:`<span class="no">✗ Sin cascada</span>`}</div>`).join("") || `<div class="empty">Sin pronóstico del gerente en este periodo.</div>`}
+      </div>
+      <div>
+        <h3>No alineado (${E.unal.length})</h3>
+        ${E.unal.length ? E.unal.map(x=>`<div class="ev-row click" data-op="${esc(x.p.email)}" title="Abrir pronóstico para alinear">
+          <span><b>${esc(x.e.nombre)}</b> · ${esc(x.i.nombre)} <span class="by" style="display:inline">peso ${nf.format(x.i.peso)}</span></span>
+          ${x.st==="broken"?`<span class="no" title="Está alineado a su jefe, pero ese indicador no llega a los tuyos">↯ Cadena rota</span>`:`<span class="no">✗ Sin alinear</span>`}</div>`).join("")
+          : `<div class="ev-row"><span class="ok">✓ Todo el peso del equipo llega a tus indicadores</span></div>`}
+      </div>
+    </div>
+    <h3 style="margin-top:16px">Por persona</h3>
+    <div class="mx-wrap"><table class="ev-t">
+      <thead><tr><th>Persona</th><th class="hide-sm">Puesto</th><th>Estado</th><th class="num">% alineado</th><th class="num hide-sm">Indicadores alineados</th><th>Pendiente</th></tr></thead>
+      <tbody>${E.people.sort((a,b)=>(a.p?a.pct:-1)-(b.p?b.pct:-1)).map(x=>{ const [ic,lb,col] = ALST[x.st]; return `<tr ${x.p?`class="click" data-op="${esc(x.p.email)}"`:""}>
+        <td><b>${esc(x.e.nombre)}</b></td><td class="hide-sm by" style="display:table-cell">${esc(x.e.puesto||"")}</td>
+        <td><span style="color:${col};font-weight:600">${ic} ${lb}</span></td>
+        <td class="num mono">${x.p?nf.format(x.pct)+"%":"—"}</td>
+        <td class="num mono hide-sm">${x.p?`${x.items.filter(y=>y.st==="ok").length}/${x.items.length}`:"—"}</td>
+        <td class="by" style="display:table-cell">${!x.p ? "Crear o replicar su pronóstico" : x.items.filter(y=>y.st!=="ok").map(y=>esc(y.i.nombre)+(y.st==="broken"?" (cadena rota)":"")).join(" · ") || "—"}</td>
+      </tr>`; }).join("")}</tbody></table></div>
+  </section>`;
+}
 
 // ---------- tema
 $("theme").onclick = ()=>{

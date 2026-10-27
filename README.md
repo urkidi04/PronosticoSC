@@ -20,11 +20,12 @@ Cada pronóstico se asocia a un correo y número de empleado, con año y trimest
 
 ## Tablero del administrador
 - **Estructura y alineación**: indicadores del equipo, organigrama con cumplimiento (▲ ≥95 %, ● 80–95 %, ▼ <80 %), cascada de cada indicador del gerente hacia líderes y consultores, y matriz de alineación.
-- **Equipo**: alta y edición de personas (correo, núm. empleado, puesto, nivel, área, a quién reporta). Las personas pueden registrarse con correo pendiente y capturarlo después; sus pronósticos se conservan.
+- **Evaluación de alineación**: cobertura de cada indicador del gerente, indicadores sin alinear o con cadena rota, y estado por persona.
+- **Equipo**: alta y edición de personas (correo, núm. empleado, posición, puesto, nivel, área, a quién reporta). Las personas pueden registrarse con correo pendiente y capturarlo después; sus pronósticos se conservan.
 - Cada indicador puede alinearse a un indicador de su jefe en el mismo periodo. Al replicar a un colaborador directo, la alineación se asigna sola.
 
 ## Puesta en marcha (Supabase, mismo proyecto que HubInnovacion)
-1. **SQL Editor**: ejecuta [`supabase/schema.sql`](supabase/schema.sql) (función de dominio) [`supabase/03_pronosticos.sql`](supabase/03_pronosticos.sql) y [`supabase/04_estructura.sql`](supabase/04_estructura.sql).
+1. **SQL Editor**: ejecuta [`supabase/schema.sql`](supabase/schema.sql) (función de dominio) [`supabase/03_pronosticos.sql`](supabase/03_pronosticos.sql) y [`supabase/04_estructura.sql`](supabase/04_estructura.sql) y [`supabase/05_posicion.sql`](supabase/05_posicion.sql).
 2. Ejecuta los archivos privados con el administrador inicial y la estructura del equipo (se comparte por fuera, no está en el repo).
 3. **Authentication → URL Configuration → Redirect URLs**: `https://urkidi04.github.io/PronosticoSC/`.
 4. **Settings → Pages**: `main` / `(root)`.
