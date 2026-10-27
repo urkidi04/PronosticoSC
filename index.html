@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pronóstico SC</title>
+<script>
+// Ventana de inicio de sesión de Microsoft: no arrancar la app aquí; la ventana principal lee la respuesta y la cierra.
+if (window.opener && window.opener !== window && /[#&?](code|error)=/.test(location.hash + location.search)) {
+  document.write('<p style="font:15px system-ui;padding:24px">Conectando con Microsoft…</p>'); window.stop && window.stop();
+}
+</script>
 <meta name="theme-color" content="#1f2a5e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Pronóstico SC">
@@ -428,9 +434,9 @@ a.btn-a.primary{background:var(--accent);border-color:var(--accent);color:#fff;f
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.39.0/lib/msal-browser.min.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=202610271635"></script>
-<script src="teams.js?v=202610271635"></script>
-<script src="supabase-api.js?v=202610271635"></script>
-<script src="pwa.js?v=202610271635"></script>
+<script src="app.js?v=202610271637"></script>
+<script src="teams.js?v=202610271637"></script>
+<script src="supabase-api.js?v=202610271637"></script>
+<script src="pwa.js?v=202610271637"></script>
 </body>
 </html>

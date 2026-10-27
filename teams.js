@@ -62,7 +62,7 @@
         if(img){ const jpg = await toJpeg(img); body.hostedContents = [{ "@microsoft.graph.temporaryId": "1", contentBytes: jpg.split(",")[1], contentType: "image/jpeg" }]; }
         await graph(tok, "POST", `/chats/${chat.id}/messages`, body);
         return { enviado: true, para, para_nombre };
-      }catch(e){ return { ...manual, error: e.message }; }
+      }catch(e){ console.error("[Teams]", e); this.lastError = e.message; return { ...manual, error: (e.errorCode ? e.errorCode + ": " : "") + e.message }; }
       finally{ tokCache = null; pending = null; }
     }
   };
@@ -72,7 +72,8 @@
     let d = document.getElementById("dlgManual");
     if(!d){ d = document.createElement("dialog"); d.id = "dlgManual"; d.className = "wide"; document.body.appendChild(d); }
     d.innerHTML = `<h2>Enviar aviso por Teams</h2>
-      <p class="hint" style="margin:0 0 10px">${r.error ? `No se pudo enviar automáticamente (${r.error}). ` : ""}El estado ya quedó guardado. Para avisar a <b>${r.para_nombre || r.para}</b>: copia la imagen, abre el chat y pégala con <b>Ctrl+V</b> junto al mensaje.</p>
+      ${r.error ? `<p class="setup" style="border-color:var(--bad);margin:0 0 10px"><b>No se pudo enviar automáticamente.</b><br>Motivo: <code id="mErr">${String(r.error).replace(/[<>&]/g,"")}</code></p>` : !window.Teams.enabled() ? `<p class="setup" style="margin:0 0 10px">El envío automático no está activo en este navegador (no cargó la librería de Microsoft).</p>` : ""}
+      <p class="hint" style="margin:0 0 10px">El estado ya quedó guardado. Para avisar a <b>${r.para_nombre || r.para}</b>: copia la imagen, abre el chat y pégala con <b>Ctrl+V</b> junto al mensaje.</p>
       ${r.img ? `<div class="img-prev" style="max-height:40vh"><img src="${r.img}" alt="Scorecard"></div>` : ""}
       <div class="btns" style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;flex-wrap:wrap">
         <button type="button" data-close>Cerrar</button>
