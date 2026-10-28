@@ -104,7 +104,10 @@ $("loginForm").addEventListener("submit", async e=>{
     m.className = "hint err";
     m.textContent = (error.status === 429 || msg.includes("rate limit"))
       ? "Se alcanzó el límite de correos por hora. Espera unos minutos e intenta de nuevo."
-      : "No se pudo enviar el enlace: " + error.message;
+      : (error.status >= 500 || !error.message || error.message === "{}")
+        ? `El servidor de correo no pudo enviar el enlace (código ${error.status || "?"}${error.code ? " · " + error.code : ""}). Avisa al administrador.`
+        : "No se pudo enviar el enlace: " + error.message + (error.status ? ` (código ${error.status})` : "");
+    console.error("[login]", error);
     return;
   }
   m.className = "hint ok"; m.textContent = `Listo. Revisa ${email} y abre el enlace para entrar.`;
