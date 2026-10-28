@@ -95,7 +95,7 @@ async function enter(session){
 $("btnMs").addEventListener("click", async ()=>{
   const m = $("msMsg"); m.className = "hint"; m.textContent = "Abriendo Microsoft…"; $("btnMs").disabled = true;
   const { error } = await sb.auth.signInWithOAuth({ provider: "azure",
-    options: { scopes: "openid profile email offline_access", redirectTo: location.origin + location.pathname.replace(/index\.html$/, "") } });
+    options: { scopes: "email profile offline_access", queryParams: { prompt: "select_account" }, redirectTo: location.origin + location.pathname.replace(/index\.html$/, "") } });
   if(error){ $("btnMs").disabled = false; m.className = "hint err"; m.textContent = "No se pudo iniciar con Microsoft: " + error.message; console.error("[login ms]", error); }
 });
 $("loginForm").addEventListener("submit", async e=>{
