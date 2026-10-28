@@ -1,6 +1,6 @@
 // Service worker de Pronóstico SC: guarda la "cáscara" de la app para que abra rápido e instalable.
 // Los datos (Supabase) siempre van a la red; nunca se guardan aquí.
-const VERSION = "pronostico-sc-v6";
+const VERSION = "pronostico-sc-v7";
 const SHELL = ["./", "./index.html", "./config.js", "./manifest.webmanifest", "./teams.js", "./pwa.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/favicon-32.png"];
 

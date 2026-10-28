@@ -14,7 +14,7 @@
         auth: { clientId: CFG.MS_CLIENT_ID, authority: `https://login.microsoftonline.com/${CFG.MS_TENANT_ID}`, redirectUri: APP_URL },
         cache: { cacheLocation: "localStorage" }
       });
-      ready = (app.initialize ? app.initialize() : Promise.resolve()).then(()=>app.handleRedirectPromise()).then(()=>app);
+      ready = (app.initialize ? app.initialize() : Promise.resolve()).then(()=>app);
     }
     return ready;
   }
@@ -22,6 +22,7 @@
     await init(); if(!app) return null;
     const acc = app.getAllAccounts().find(a=>(a.username||"").toLowerCase() === (email||"").toLowerCase()) || app.getAllAccounts()[0];
     try{ if(acc) return (await app.acquireTokenSilent({ scopes: SCOPES, account: acc })).accessToken; }catch(e){}
+    if(email){ try{ const r = await app.ssoSilent({ scopes: SCOPES, loginHint: email }); return r.accessToken; }catch(e){} }
     return (await app.acquireTokenPopup({ scopes: SCOPES, loginHint: email, prompt: acc ? undefined : "select_account" })).accessToken;
   }
   async function graph(tok, method, path, body){
@@ -40,6 +41,8 @@
   window.Teams = {
     enabled,
     connected(){ try{ return !!(app && app.getAllAccounts().length); }catch(e){ return false; } },
+    // al entrar con Microsoft, conectar Teams en silencio (sin ventana) usando la misma sesión
+    async silent(email){ try{ await init(); if(!app || this.connected()) return this.connected(); await app.ssoSilent({ scopes: SCOPES, loginHint: email }); return true; }catch(e){ return false; } },
     // conexión de una sola vez (ventana de Microsoft); después los envíos son silenciosos
     async connect(email){ await init(); const r = await app.loginPopup({ scopes: SCOPES, loginHint: email, prompt: "select_account" }); app.setActiveAccount && app.setActiveAccount(r.account); return r.account; },
     // se llama en el instante del clic, antes de cualquier otra espera, para que el navegador no bloquee la ventana

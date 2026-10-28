@@ -82,6 +82,7 @@ async function enter(session){
   $("login").hidden = true; $("btnOut").hidden = false;
   const adm = await sb.from("pr_admins").select("email").limit(1);
   await window.App.start({ email, isAdmin: !adm.error && adm.data.length > 0 });
+  if(window.Teams && window.Teams.enabled()) window.Teams.silent(email).then(ok=>{ if(ok && window.App.refreshSoon) window.App.refreshSoon(); });
   if(!channel){
     channel = sb.channel("pronosticos-cambios");
     ["pr_pronosticos","pr_indicadores","pr_tareas"].forEach(table=>
@@ -90,6 +91,13 @@ async function enter(session){
   }
 }
 
+// Entrar con Microsoft (Supabase → proveedor Azure; solo el tenant de Bafar)
+$("btnMs").addEventListener("click", async ()=>{
+  const m = $("msMsg"); m.className = "hint"; m.textContent = "Abriendo Microsoft…"; $("btnMs").disabled = true;
+  const { error } = await sb.auth.signInWithOAuth({ provider: "azure",
+    options: { scopes: "openid profile email offline_access", redirectTo: location.origin + location.pathname.replace(/index\.html$/, "") } });
+  if(error){ $("btnMs").disabled = false; m.className = "hint err"; m.textContent = "No se pudo iniciar con Microsoft: " + error.message; console.error("[login ms]", error); }
+});
 $("loginForm").addEventListener("submit", async e=>{
   e.preventDefault();
   const email = $("loginEmail").value.trim().toLowerCase(), m = $("loginMsg");

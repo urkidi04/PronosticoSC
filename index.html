@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pronóstico SC</title>
 <script>
-// Ventana de inicio de sesión de Microsoft: no arrancar la app aquí; la ventana principal lee la respuesta y la cierra.
-if (window.opener && window.opener !== window && /[#&?](code|error)=/.test(location.hash + location.search)) {
+// Ventana o marco oculto de inicio de sesión de Microsoft: no arrancar la app aquí; la ventana principal lee la respuesta y la cierra.
+if (((window.opener && window.opener !== window) || window.parent !== window) && /[#&?](code|error)=/.test(location.hash + location.search)) {
   document.write('<p style="font:15px system-ui;padding:24px">Conectando con Microsoft…</p>'); window.stop && window.stop();
 }
 </script>
@@ -272,6 +272,11 @@ button.ok-btn{background:var(--good);border-color:var(--good)}
 a.btn-a{display:inline-block;text-decoration:none;font-size:13px;border:1px solid var(--line);padding:7px 12px;border-radius:8px}
 a.btn-a.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
 
+.ms-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:11px 14px;font-size:15px}
+.alt-login{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+.alt-login summary{cursor:pointer;font-size:13px;color:var(--muted)}
+.alt-login form{margin-top:10px}
+
 </style>
 </head>
 <body>
@@ -292,11 +297,14 @@ a.btn-a.primary{background:var(--accent);border-color:var(--accent);color:#fff;f
   <p class="setup" id="setup" hidden>Falta configurar la base: llena <code>config.js</code> y ejecuta los scripts de <code>supabase/</code>.</p>
   <section class="card login" id="login" hidden aria-labelledby="h-login">
     <h2 id="h-login">Iniciar sesión</h2>
-    <p>Acceso restringido a correos <b>@bafar.com.mx</b>. Te enviaremos un enlace a tu correo para entrar.</p>
+    <p>Acceso restringido a cuentas <b>@bafar.com.mx</b>. Entra con tu cuenta de Microsoft de Bafar (la misma de Teams y Outlook).</p>
+    <button type="button" class="primary ms-btn" id="btnMs"><svg viewBox="0 0 21 21" width="18" height="18" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>Entrar con Microsoft</button>
+    <span class="hint" id="msMsg" role="status"></span>
+    <details class="alt-login"><summary>Otra opción: recibir un enlace por correo</summary>
     <form id="loginForm" novalidate>
       <label for="loginEmail">Correo</label>
       <input id="loginEmail" type="email" autocomplete="email" placeholder="nombre@bafar.com.mx" required>
-      <button type="submit" class="primary" id="btnLogin">Enviarme el enlace</button>
+      <button type="submit" id="btnLogin">Enviarme el enlace</button>
       <span class="hint" id="loginMsg" role="status"></span>
     </form>
     <form id="codeForm" novalidate hidden>
@@ -305,6 +313,7 @@ a.btn-a.primary{background:var(--accent);border-color:var(--accent);color:#fff;f
       <button type="submit" id="btnCode">Entrar con código</button>
       <span class="hint" id="codeMsg" role="status"></span>
     </form>
+    </details>
   </section>
 
   <main id="app" hidden><div id="main"></div></main>
@@ -434,9 +443,9 @@ a.btn-a.primary{background:var(--accent);border-color:var(--accent);color:#fff;f
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.39.0/lib/msal-browser.min.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=202610280927"></script>
-<script src="teams.js?v=202610280927"></script>
-<script src="supabase-api.js?v=202610280927"></script>
-<script src="pwa.js?v=202610280927"></script>
+<script src="app.js?v=202610281038"></script>
+<script src="teams.js?v=202610281038"></script>
+<script src="supabase-api.js?v=202610281038"></script>
+<script src="pwa.js?v=202610281038"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 Pronósticos de scorecard trimestral por colaborador (Oficina Aplicaciones SAP/POS).
 
 - Sitio estático publicado con GitHub Pages: `index.html` + `app.js` (interfaz) + `supabase-api.js` (datos).
-- **Acceso con enlace mágico al correo; solo correos `@bafar.com.mx`** (validado en el navegador y en las políticas RLS de la base).
+- **Acceso con "Entrar con Microsoft"** (cuentas del tenant de Bafar, proveedor *Azure* de Supabase); el enlace por correo queda como opción secundaria. Solo `@bafar.com.mx` (validado en el navegador y en las políticas RLS de la base).
 - Los datos (colaboradores, metas, pesos, valores reales) viven en **Supabase**, no en este repositorio.
 
 ## Roles
@@ -22,6 +22,10 @@ Cada pronóstico se asocia a un correo y número de empleado, con año y trimest
 - Estados: **Borrador → Por liberar → Liberado**. El colaborador envía su pronóstico a liberación; el administrador lo libera, lo devuelve con comentario o lo reabre ([`supabase/06_liberacion.sql`](supabase/06_liberacion.sql)).
 - Mientras está por liberar o liberado, el colaborador no puede cambiar estructura, metas ni pesos (sí captura el real). No se puede enviar ni liberar si los pesos no suman 100.
 - Aviso por **Microsoft Teams** con la imagen del scorecard, en el chat 1 a 1 entre las personas, mediante **Microsoft Graph** (`teams.js`, MSAL). Requiere registrar la app en Entra ID y poner `MS_CLIENT_ID` / `MS_TENANT_ID` en `config.js`. Sin eso, la página abre el chat de Teams con el texto listo para pegar la imagen.
+
+### Entrar con Microsoft (Supabase → Azure)
+1. En la app de Entra ID: **Authentication → Add a platform → Web** con `https://cuwulmaxhlwzbutmhssf.supabase.co/auth/v1/callback`, y **Certificates & secrets → New client secret**.
+2. En Supabase: **Authentication → Providers → Azure**: Client ID, secreto y *Azure Tenant URL* `https://login.microsoftonline.com/<tenant-id>`.
 
 ### Registro en Entra ID (una vez)
 1. **Entra ID → App registrations → New registration**: nombre *Pronóstico SC*, *Single tenant*.
