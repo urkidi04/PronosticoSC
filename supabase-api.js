@@ -52,6 +52,17 @@ window.API = {
     else chk(await sb.from("pr_tareas").insert(row));
   },
   async eliminarTarea(id){ chkRows(await sb.from("pr_tareas").delete().eq("id", id).select("id")); },
+  async catalogo(){ return chk(await sb.from("pr_catalogo").select("*").order("nombre")); },
+  async guardarCatalogo(c){
+    const row = { nombre: c.nombre, meta: c.meta, unidad: c.unidad, descripcion: c.descripcion };
+    if(c.id){ chkRows(await sb.from("pr_catalogo").update(row).eq("id", c.id).select("id")); return c.id; }
+    return chk(await sb.from("pr_catalogo").insert(row).select("id").single()).id;
+  },
+  async eliminarCatalogo(id){ chkRows(await sb.from("pr_catalogo").delete().eq("id", id).select("id")); },
+  async asignarTarea(a){ return chk(await sb.rpc("pr_asignar_tarea", { cat: a.cat, destinos: a.destinos, anio: a.anio, trimestre: a.trimestre,
+    indicador: a.indicador, meta: a.meta, unidad: a.unidad, repartir: a.repartir, incluir_liberados: a.incluir_liberados })); },
+  async quitarTarea(tid, repartir){ chk(await sb.rpc("pr_quitar_tarea", { tid, repartir })); },
+  async fusionarCatalogo(origen, destino){ return chk(await sb.rpc("pr_fusionar_catalogo", { origen, destino })); },
   async capturarReal(id, real){ chkRows(await sb.from("pr_tareas").update({ real }).eq("id", id).select("id")); },
   async solicitarLiberacion(pid, img){ return liberacion(pid, "solicitar", null, img); },
   async liberar(pid, img){ return liberacion(pid, "liberar", null, img); },
@@ -85,7 +96,7 @@ async function enter(session){
   if(window.Teams && window.Teams.enabled()) window.Teams.silent(email).then(ok=>{ if(ok && window.App.refreshSoon) window.App.refreshSoon(); });
   if(!channel){
     channel = sb.channel("pronosticos-cambios");
-    ["pr_pronosticos","pr_indicadores","pr_tareas"].forEach(table=>
+    ["pr_pronosticos","pr_indicadores","pr_tareas","pr_catalogo"].forEach(table=>
       channel.on("postgres_changes", { event: "*", schema: "public", table }, ()=>window.App.refreshSoon()));
     channel.subscribe(s=>{ if(s === "SUBSCRIBED") $("status").textContent = "· en vivo"; });
   }

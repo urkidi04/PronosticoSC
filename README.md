@@ -18,6 +18,13 @@ Pronósticos de scorecard trimestral por colaborador (Oficina Aplicaciones SAP/P
 
 Cada pronóstico se asocia a un correo y número de empleado, con año y trimestre (Q1–Q4). Al replicar se copian indicadores y tareas; los valores reales solo si se marca la casilla. Si la persona ya tiene pronóstico en ese periodo, se omite.
 
+## Catálogo de tareas
+- Pestaña **Catálogo de tareas** (administrador) — [`supabase/07_catalogo.sql`](supabase/07_catalogo.sql).
+- Toda tarea agregada a un pronóstico se liga sola al catálogo por nombre (sin duplicar mayúsculas/espacios); al agregar una tarea, el nombre sugiere las del catálogo con su meta y unidad.
+- **Quién la tiene**: por periodo, con estado, indicador, peso, meta, real y cumplimiento; se puede quitar (reparte el resto parejo).
+- **Asignar a empleados**: a una o varias personas en el indicador elegido (si no existe se crea con peso 0), repartiendo parejo los pesos; por defecto no toca pronósticos por liberar o liberados.
+- **Fusionar** dos tareas del catálogo: las asignaciones pasan a la que se queda; renombrar o fusionar solo cambia el nombre en pronósticos en borrador.
+
 ## Liberación
 - Estados: **Borrador → Por liberar → Liberado**. El colaborador envía su pronóstico a liberación; el administrador lo libera, lo devuelve con comentario o lo reabre ([`supabase/06_liberacion.sql`](supabase/06_liberacion.sql)).
 - Mientras está por liberar o liberado, el colaborador no puede cambiar estructura, metas ni pesos (sí captura el real). No se puede enviar ni liberar si los pesos no suman 100.
@@ -45,7 +52,7 @@ Cada pronóstico se asocia a un correo y número de empleado, con año y trimest
 - Cada indicador puede alinearse a un indicador de su jefe en el mismo periodo. Al replicar a un colaborador directo, la alineación se asigna sola.
 
 ## Puesta en marcha (Supabase, mismo proyecto que HubInnovacion)
-1. **SQL Editor**: ejecuta, en orden, [`schema.sql`](supabase/schema.sql), [`03_pronosticos.sql`](supabase/03_pronosticos.sql), [`04_estructura.sql`](supabase/04_estructura.sql) , [`05_posicion.sql`](supabase/05_posicion.sql) y [`06_liberacion.sql`](supabase/06_liberacion.sql).
+1. **SQL Editor**: ejecuta, en orden, [`schema.sql`](supabase/schema.sql), [`03_pronosticos.sql`](supabase/03_pronosticos.sql), [`04_estructura.sql`](supabase/04_estructura.sql) , [`05_posicion.sql`](supabase/05_posicion.sql), [`06_liberacion.sql`](supabase/06_liberacion.sql) y [`07_catalogo.sql`](supabase/07_catalogo.sql).
 2. Ejecuta los archivos privados con el administrador inicial y la estructura del equipo (se comparte por fuera, no está en el repo).
 3. **Authentication → URL Configuration → Redirect URLs**: `https://urkidi04.github.io/PronosticoSC/`.
 4. **Settings → Pages**: `main` / `(root)`.

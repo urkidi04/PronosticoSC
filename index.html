@@ -277,6 +277,20 @@ a.btn-a.primary{background:var(--accent);border-color:var(--accent);color:#fff;f
 .alt-login summary{cursor:pointer;font-size:13px;color:var(--muted)}
 .alt-login form{margin-top:10px}
 
+.cat-grid{display:grid;grid-template-columns:minmax(240px,1fr) 2.2fr;gap:16px;align-items:start}
+.cat-list{padding:12px} .cat-list input{width:100%;font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);margin-bottom:8px}
+.cat-items{display:grid;gap:2px;max-height:68vh;overflow:auto}
+.cat-it{display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;border:none;background:none;padding:8px 10px;border-radius:8px;font-size:13.5px}
+.cat-it:hover{background:var(--bg)} .cat-it.on{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);font-weight:600}
+.cat-n{font-family:"IBM Plex Mono",monospace;font-size:12px;background:var(--track);border-radius:999px;padding:1px 8px;color:var(--ink)} .cat-n.zero{color:var(--muted)}
+.cat-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.sub-tabs{margin:4px 0 12px}
+.asg .people{max-height:300px} .person.dis{opacity:.55}
+.fl{display:grid;gap:4px;font-size:13px;font-weight:500} .fl input{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
+.asg .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#cPer{font:inherit;font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+@media (max-width:760px){ .cat-grid{grid-template-columns:1fr} .asg .two{grid-template-columns:1fr} }
+
 </style>
 </head>
 <body>
@@ -385,7 +399,8 @@ a.btn-a.primary{background:var(--accent);border-color:var(--accent);color:#fff;f
 <dialog id="dlgTask">
   <form id="tForm" novalidate>
     <h2 id="tTitle">Tarea</h2>
-    <label>Nombre<input id="tNombre" required maxlength="200"></label>
+    <label>Nombre<input id="tNombre" required maxlength="200" list="tCat" autocomplete="off" placeholder="Escribe o elige del catálogo"></label>
+    <datalist id="tCat"></datalist>
     <label>Indicador<select id="tInd" required></select></label>
     <div class="two">
       <label>Peso en el indicador<input id="tPeso" type="number" min="0" step="any" required></label>
@@ -433,6 +448,24 @@ a.btn-a.primary{background:var(--accent);border-color:var(--accent);color:#fff;f
   <label style="display:grid;gap:6px;font-size:13px;font-weight:500">¿Qué debe corregir?<textarea id="devTxt" rows="4" maxlength="500" style="font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)"></textarea></label>
   <div class="btns" style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px"><button type="button" data-close>Cancelar</button><button type="button" class="primary" id="devOk">Devolver y avisar por Teams</button></div>
 </dialog>
+<dialog id="dlgCat">
+  <form id="kForm" novalidate>
+    <h2 id="kTitle">Tarea del catálogo</h2>
+    <label>Nombre<input id="kNombre" required maxlength="200"></label>
+    <div class="two"><label>Meta sugerida<input id="kMeta" type="number" min="0" step="any"></label><label>Unidad<input id="kUni" list="unidades"></label></div>
+    <label>Descripción (opcional)<input id="kDesc" maxlength="300"></label>
+    <p class="hint" id="kNote" hidden>Si cambias el nombre, se actualiza en los pronósticos en borrador; los liberados conservan el nombre con que se liberaron.</p>
+    <span class="hint err" id="kMsg"></span>
+    <div class="btns"><button type="button" data-close>Cancelar</button><button type="submit" class="primary">Guardar</button></div>
+  </form>
+</dialog>
+<dialog id="dlgFus">
+  <h2 id="fTitle">Fusionar</h2>
+  <label style="display:grid;gap:6px;font-size:13px;font-weight:500">Unir con (esta es la que se queda)<select id="fDest" style="font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)"></select></label>
+  <p class="hint" id="fInfo" style="margin:12px 0"></p>
+  <span class="hint err" id="fMsg"></span>
+  <div class="btns" style="display:flex;justify-content:flex-end;gap:8px"><button type="button" data-close>Cancelar</button><button type="button" class="primary" id="fGo">Fusionar</button></div>
+</dialog>
 <dialog id="dlgConfirm">
   <h2 id="cfTitle"></h2>
   <p id="cfText" style="margin:0 0 16px;color:var(--muted)"></p>
@@ -443,9 +476,9 @@ a.btn-a.primary{background:var(--accent);border-color:var(--accent);color:#fff;f
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.39.0/lib/msal-browser.min.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=202610281055"></script>
-<script src="teams.js?v=202610281055"></script>
-<script src="supabase-api.js?v=202610281055"></script>
-<script src="pwa.js?v=202610281055"></script>
+<script src="app.js?v=202610281329"></script>
+<script src="teams.js?v=202610281329"></script>
+<script src="supabase-api.js?v=202610281329"></script>
+<script src="pwa.js?v=202610281329"></script>
 </body>
 </html>

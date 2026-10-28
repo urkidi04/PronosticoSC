@@ -43,10 +43,12 @@ async function refresh(){
   PRONS = await API.list();
   PRONS.forEach(sortInds);
   EMPS = await API.empleados();
+  try{ CAT = API.catalogo ? await API.catalogo() : []; }catch(e){ CAT = []; }
+  if($("tCat")) $("tCat").innerHTML = CAT.map(c=>`<option value="${esc(c.nombre)}">`).join("");
   if(curId && !pron(curId)) curId = null;
   render();
 }
-function render(){ curId ? renderDetail() : view==="dash" ? renderDash() : view==="team" ? renderTeam() : renderList(); }
+function render(){ curId ? renderDetail() : view==="dash" ? renderDash() : view==="team" ? renderTeam() : view==="cat" ? renderCat() : renderList(); }
 
 // ---------- lista
 function renderList(){
@@ -383,6 +385,7 @@ function openTask(id, indId){
   $("tTitle").textContent = t ? "Editar tarea" : "Agregar tarea";
   $("tInd").innerHTML = p.indicadores.map(d=>`<option value="${d.id}">${esc(d.nombre)}</option>`).join(""); $("tInd").value = ind.id;
   $("tNombre").value = t ? t.nombre : "";
+  $("tNombre").oninput = ()=>{ if(t) return; const c = CAT.find(x=>catKey(x.nombre)===catKey($("tNombre").value)); if(c){ $("tMeta").value = Number(c.meta); $("tUnidad").value = c.unidad; } };
   $("tPeso").value = t ? Math.round(Number(t.peso)*1000)/1000 : Math.round(100/(ind.tareas.length+1)*1000)/1000;
   $("tMeta").value = t ? Number(t.meta) : 100;
   $("tUnidad").value = t ? t.unidad : (ind.tareas[0] ? ind.tareas[0].unidad : "%");
@@ -542,7 +545,8 @@ function navHtml(){
   return ME.isAdmin ? `<div class="tabs" role="tablist">
     <button role="tab" class="tab ${view==="list"?"on":""}" data-view="list" aria-selected="${view==="list"}">Pronósticos</button>
     <button role="tab" class="tab ${view==="dash"?"on":""}" data-view="dash" aria-selected="${view==="dash"}">Estructura y alineación</button>
-    <button role="tab" class="tab ${view==="team"?"on":""}" data-view="team" aria-selected="${view==="team"}">Equipo</button></div>` : "";
+    <button role="tab" class="tab ${view==="team"?"on":""}" data-view="team" aria-selected="${view==="team"}">Equipo</button>
+    <button role="tab" class="tab ${view==="cat"?"on":""}" data-view="cat" aria-selected="${view==="cat"}">Catálogo de tareas</button></div>` : "";
 }
 function bindNav(){ document.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>{ view=b.dataset.view; curId=null; render(); }); }
 
@@ -876,6 +880,149 @@ function teamsSent(r){
   if(r.manual && window.showTeamsManual){ toast("Estado actualizado"); return window.showTeamsManual(r); }
   toast(r.enviado ? `Aviso enviado por Teams a ${r.para_nombre || r.para}` : `Estado actualizado. ${r.error ? "No se pudo enviar a Teams: "+r.error : ""}`);
 }
+
+// ---------- catálogo de tareas (administrador): gestión y asignación
+let CAT = [], catSel = null, catTxt = "", catPer = null, catMode = "quien";
+const catKey = n => String(n||"").trim().replace(/\s+/g," ").toLowerCase();
+const catAsig = (cid, k) => PRONS.filter(p=>k==null || perKey(p)===k).flatMap(p=>p.indicadores.flatMap(i=>i.tareas.filter(t=>t.catalogo_id===cid).map(t=>({ p, i, t }))));
+function renderCat(){
+  const keys = [...new Set(PRONS.map(perKey))].sort((a,b)=>b-a);
+  if(!catPer || !keys.includes(catPer)) catPer = keys[0] || null;
+  const list = CAT.filter(c=>!catTxt || catKey(c.nombre).includes(catKey(catTxt))).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  if(catSel && !CAT.some(c=>c.id===catSel)) catSel = null;
+  if(!catSel && list[0]) catSel = list[0].id;
+  const sel = CAT.find(c=>c.id===catSel);
+  $("main").innerHTML = navHtml() + `
+    <div class="bar">
+      <div><h2 class="h">Catálogo de tareas</h2><div class="sub">${CAT.length} tareas · cada tarea nueva en un pronóstico se agrega sola al catálogo</div></div>
+      <div class="tools">${keys.length?`<select id="cPer" aria-label="Periodo">${keys.map(k=>`<option value="${k}" ${k===catPer?"selected":""}>${perLbl(k)}</option>`).join("")}</select>`:""}
+      <button class="primary" id="btnNewCat">+ Nueva tarea</button></div>
+    </div>
+    <div class="cat-grid">
+      <section class="card cat-list">
+        <input id="cTxt" type="search" placeholder="Buscar tarea" value="${esc(catTxt)}">
+        <div class="cat-items">${list.map(c=>{ const n = catAsig(c.id, catPer).length; return `<button class="cat-it ${c.id===catSel?"on":""}" data-cat="${c.id}">
+          <span>${esc(c.nombre)}</span><span class="cat-n ${n?"":"zero"}" title="Personas que la tienen en ${catPer?perLbl(catPer):""}">${n}</span></button>`; }).join("") || `<div class="empty">Sin coincidencias.</div>`}</div>
+      </section>
+      <section class="card cat-det">${sel ? catDetHtml(sel) : `<div class="empty big-empty">Elige una tarea del catálogo.</div>`}</section>
+    </div>`;
+  bindNav();
+  if($("cPer")) $("cPer").onchange = e=>{ catPer = Number(e.target.value); renderCat(); };
+  $("btnNewCat").onclick = ()=>openCat(null);
+  $("cTxt").oninput = e=>{ catTxt = e.target.value; const pos = e.target.selectionStart; renderCat(); const el = $("cTxt"); el.focus(); el.setSelectionRange(pos,pos); };
+  document.querySelectorAll("[data-cat]").forEach(b=>b.onclick=()=>{ catSel = Number(b.dataset.cat); renderCat(); });
+  if(sel) bindCatDet(sel);
+}
+function catDetHtml(c){
+  const rows = catAsig(c.id, catPer);
+  const head = `<div class="cat-head"><div><h3 class="h" style="font-size:18px">${esc(c.nombre)}</h3>
+      <div class="sub">Meta sugerida <span class="mono">${nf0.format(c.meta)}${c.unidad==="%"?" %":" "+esc(c.unidad)}</span>${c.descripcion?` · ${esc(c.descripcion)}`:""}</div></div>
+      <div class="tools"><button id="cEdit">✎ Editar</button><button id="cFus" title="Unir esta tarea con otra del catálogo">⇄ Fusionar</button><button class="danger-ghost" id="cDel">Eliminar</button></div></div>
+    <div class="tabs sub-tabs"><button class="tab ${catMode==="quien"?"on":""}" data-cm="quien">Quién la tiene (${rows.length})</button><button class="tab ${catMode==="asignar"?"on":""}" data-cm="asignar">Asignar a empleados</button></div>`;
+  if(!catPer) return head + `<div class="empty">Aún no hay pronósticos.</div>`;
+  if(catMode==="quien") return head + (rows.length ? `<table class="list"><thead><tr><th>Persona</th><th class="hide-sm">Indicador</th><th class="num">Peso</th><th class="num hide-sm">Meta</th><th class="num">Real</th><th class="num">Cumpl.</th><th></th></tr></thead><tbody>${rows.map(({p,i,t})=>{ const v = pctOf(t), e = empOf(p); return `<tr>
+      <td><b>${esc(e.nombre||p.email)}</b> ${estBadge(p)}<div class="by">${esc(e.puesto||"")}</div></td><td class="hide-sm">${esc(i.nombre)}</td>
+      <td class="num mono">${nf.format(t.peso)}</td><td class="num mono hide-sm">${nf0.format(t.meta)}</td><td class="num mono">${t.real??"—"}</td>
+      <td class="num mono" style="color:${v===null?"var(--muted)":statusColor(v)}">${v===null?"—":nf.format(v)+"%"}</td>
+      <td class="act"><button class="ib" data-op2="${p.id}" title="Abrir pronóstico">↗</button><button class="ib del" data-quitar="${t.id}" title="Quitar a esta persona" aria-label="Quitar">✕</button></td></tr>`; }).join("")}</tbody></table>
+      <p class="hint" style="margin-top:8px">Al quitarla, los pesos de las demás tareas de ese indicador se reparten parejo.</p>`
+    : `<div class="empty big-empty">Nadie la tiene en ${perLbl(catPer)}. Usa «Asignar a empleados».</div>`);
+  // asignar
+  const M = orgModel(catPer), team = (M.team.length ? M.team : EMPS);
+  const inds = [...new Set(M.prons.flatMap(p=>p.indicadores.map(i=>i.nombre)))].sort();
+  const sug = rows[0] ? rows[0].i.nombre : (inds[0] || "");
+  return head + `<div class="asg">
+    <div class="row"><b>Personas · ${perLbl(catPer)}</b><span><button type="button" class="link" id="aAll">Todas las disponibles</button> · <button type="button" class="link" id="aNone">Ninguna</button></span></div>
+    <div class="people">${team.map(e=>{ const p = M.pOf[e.email], has = p && p.indicadores.some(i=>i.tareas.some(t=>t.catalogo_id===c.id));
+      const st = !p ? "sin" : has ? "tiene" : estOf(p)!=="borrador" ? "lib" : "ok";
+      return `<label class="person ${st==="ok"||st==="lib"?"":"dis"}"><input type="checkbox" value="${esc(e.email)}" data-st="${st}" ${st==="sin"||st==="tiene"?"disabled":""}>
+        <span><b>${esc(e.nombre||e.email)}</b><span class="by">${esc(e.puesto||"")}${st==="sin"?" · sin pronóstico":st==="tiene"?" · ya la tiene":st==="lib"?" · "+EST[estOf(p)][0].toLowerCase():""}</span></span></label>`; }).join("")}</div>
+    <div class="two" style="margin-top:12px">
+      <label class="fl">Indicador donde se agrega<input id="aInd" list="aInds" value="${esc(sug)}"><datalist id="aInds">${inds.map(n=>`<option value="${esc(n)}">`).join("")}</datalist></label>
+      <div class="two"><label class="fl">Meta<input id="aMeta" type="number" min="0" step="any" value="${Number(c.meta)}"></label><label class="fl">Unidad<input id="aUni" list="unidades" value="${esc(c.unidad)}"></label></div>
+    </div>
+    <label class="check"><input type="checkbox" id="aRep" checked> Repartir parejo los pesos de las tareas del indicador</label>
+    <label class="check"><input type="checkbox" id="aLib"> Incluir pronósticos por liberar o liberados</label>
+    <p class="hint">Si la persona no tiene ese indicador, se crea con peso 0 (ajusta luego los pesos de sus indicadores).</p>
+    <div class="sum" id="aSum"></div>
+    <div class="btns" style="display:flex;justify-content:flex-end;margin-top:10px"><button class="primary" id="aGo">Asignar</button></div>
+  </div>`;
+}
+function bindCatDet(c){
+  document.querySelectorAll("[data-cm]").forEach(b=>b.onclick=()=>{ catMode = b.dataset.cm; renderCat(); });
+  $("cEdit").onclick = ()=>openCat(c.id);
+  $("cFus").onclick = ()=>openFus(c);
+  $("cDel").onclick = ()=>{ const n = catAsig(c.id, null).length;
+    confirmDlg("Eliminar del catálogo", n ? `«${c.nombre}» está en ${n} pronóstico(s). Se quita del catálogo pero las tareas se conservan en esos pronósticos.` : `¿Eliminar «${c.nombre}» del catálogo?`, "Eliminar",
+      ()=>run(async()=>{ await API.eliminarCatalogo(c.id); catSel = null; await refresh(); }, "Eliminada del catálogo")); };
+  document.querySelectorAll("[data-op2]").forEach(b=>b.onclick=()=>{ curId = Number(b.dataset.op2); window.scrollTo(0,0); render(); });
+  document.querySelectorAll("[data-quitar]").forEach(b=>b.onclick=()=>{ const id = Number(b.dataset.quitar), x = catAsig(c.id, catPer).find(r=>r.t.id===id);
+    confirmDlg("Quitar tarea", `¿Quitar «${c.nombre}» a ${empOf(x.p).nombre||x.p.email}? Los pesos de las demás tareas de «${x.i.nombre}» se reparten parejo.`, "Quitar",
+      ()=>run(async()=>{ await API.quitarTarea(id, true); await refresh(); }, "Tarea quitada y pesos repartidos")); });
+  if(!$("aGo")) return;
+  const boxes = () => [...document.querySelectorAll(".asg .people input")];
+  const sum = () => {
+    const lib = $("aLib").checked;
+    boxes().forEach(b=>{ if(b.dataset.st==="lib"){ b.disabled = !lib; if(!lib) b.checked = false; b.closest(".person").classList.toggle("dis", !lib); } });
+    const n = boxes().filter(b=>b.checked).length;
+    $("aSum").textContent = n ? `Se agregará «${c.nombre}» a ${n} persona${n===1?"":"s"} en «${$("aInd").value||"—"}»${$("aRep").checked?", repartiendo parejo los pesos de ese indicador":""}.` : "Selecciona al menos una persona.";
+    $("aGo").disabled = !n || !$("aInd").value.trim();
+  };
+  boxes().forEach(b=>b.onchange = sum); ["aInd","aRep","aLib"].forEach(id=>$(id).oninput = $(id).onchange = sum);
+  $("aAll").onclick = ()=>{ boxes().forEach(b=>{ if(!b.disabled) b.checked = true; }); sum(); };
+  $("aNone").onclick = ()=>{ boxes().forEach(b=>b.checked = false); sum(); };
+  sum();
+  $("aGo").onclick = async e=>{
+    e.target.disabled = true;
+    try{
+      const r = await API.asignarTarea({ cat: c.id, destinos: boxes().filter(b=>b.checked).map(b=>b.value), anio: Math.floor(catPer/10), trimestre: catPer%10,
+        indicador: $("aInd").value.trim(), meta: Number($("aMeta").value)||null, unidad: $("aUni").value.trim()||null, repartir: $("aRep").checked, incluir_liberados: $("aLib").checked });
+      const ok = r.filter(x=>x.resultado==="asignada").length, om = r.length - ok;
+      catMode = "quien"; await refresh(); toast(`Asignada a ${ok} persona${ok===1?"":"s"}${om?` · ${om} omitida${om===1?"":"s"}`:""}`);
+    } catch(err){ toast(err.message); e.target.disabled = false; }
+  };
+}
+// fusionar: la tarea actual (origen) se une a otra (destino) y desaparece del catálogo
+let fusOrigen = null;
+function openFus(c){
+  fusOrigen = c;
+  const sim = CAT.filter(x=>x.id!==c.id).map(x=>{ const a = new Set(catKey(c.nombre).split(/[\s/]+/)), b = catKey(x.nombre).split(/[\s/]+/);
+    return { x, s: b.filter(w=>a.has(w) && w.length>2).length }; }).sort((u,v)=>v.s-u.s || u.x.nombre.localeCompare(v.x.nombre));
+  $("fTitle").textContent = `Fusionar «${c.nombre}»`;
+  $("fDest").innerHTML = sim.map(({x,s})=>`<option value="${x.id}">${esc(x.nombre)}${s?" · parecida":""}</option>`).join("");
+  $("fMsg").textContent = ""; fusInfo(); $("dlgFus").showModal(); $("fDest").focus();
+}
+function fusInfo(){
+  const d = CAT.find(x=>x.id===Number($("fDest").value)); if(!d || !fusOrigen) return;
+  const no = catAsig(fusOrigen.id, null).length, nd = catAsig(d.id, null).length;
+  const ambas = new Set(catAsig(fusOrigen.id, null).map(r=>r.p.id).filter(pid=>catAsig(d.id, null).some(r=>r.p.id===pid))).size;
+  $("fInfo").innerHTML = `Quedará solo <b>«${esc(d.nombre)}»</b>. Sus ${nd} asignación(es) se conservan y se le suman las ${no} de «${esc(fusOrigen.nombre)}», que se renombran en los pronósticos en borrador (los liberados conservan su nombre).` +
+    (ambas ? `<br><span style="color:var(--warn)">⚠ ${ambas} pronóstico(s) tienen las dos tareas: quedarán dos tareas iguales que puedes quitar desde «Quién la tiene».</span>` : "");
+}
+$("fDest").onchange = fusInfo;
+$("fGo").onclick = async e=>{
+  const dest = Number($("fDest").value); e.target.disabled = true;
+  try{ const r = await API.fusionarCatalogo(fusOrigen.id, dest); $("dlgFus").close(); catSel = dest; catMode = "quien"; await refresh();
+    toast(`Fusionadas en «${r.destino}» · ${r.tareas} tarea(s) movida(s)`); }
+  catch(err){ $("fMsg").textContent = err.message; }
+  e.target.disabled = false;
+};
+let editCat = null;
+function openCat(id){
+  editCat = id; const c = id ? CAT.find(x=>x.id===id) : {};
+  $("kTitle").textContent = id ? "Editar tarea del catálogo" : "Nueva tarea del catálogo";
+  $("kNombre").value = c.nombre || ""; $("kMeta").value = c.meta ?? 100; $("kUni").value = c.unidad || "%"; $("kDesc").value = c.descripcion || "";
+  $("kNote").hidden = !id; $("kMsg").textContent = ""; $("dlgCat").showModal(); $("kNombre").focus();
+}
+$("kForm").addEventListener("submit", async ev=>{
+  ev.preventDefault();
+  const row = { id: editCat||undefined, nombre: $("kNombre").value.trim().replace(/\s+/g," "), meta: Number($("kMeta").value), unidad: $("kUni").value.trim()||"%", descripcion: $("kDesc").value.trim()||null };
+  if(!row.nombre){ $("kMsg").textContent = "Escribe el nombre."; return; }
+  if(!(row.meta>0)){ $("kMsg").textContent = "La meta debe ser mayor a 0."; return; }
+  if(CAT.some(x=>x.id!==editCat && catKey(x.nombre)===catKey(row.nombre))){ $("kMsg").textContent = "Ya existe una tarea con ese nombre en el catálogo."; return; }
+  try{ const id = await API.guardarCatalogo(row); if(id) catSel = id; $("dlgCat").close(); toast(editCat?"Tarea del catálogo actualizada":"Tarea agregada al catálogo"); await refresh(); }
+  catch(e){ $("kMsg").textContent = e.message; }
+});
 
 // ---------- tema
 $("theme").onclick = ()=>{
